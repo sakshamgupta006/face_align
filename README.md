@@ -1,4 +1,4 @@
-# GSOC 2017: Face Alignment Module for OpneCV version 3.2.x
+# GSOC 2017: Face Alignment Module for OpenCV version 3.2.x
 The project aims to implement state of the art Face alignment Technique proposed by Vahid Kazemi
 
 ## Project Description
