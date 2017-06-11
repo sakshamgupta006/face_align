@@ -63,12 +63,16 @@ public:
     virtual vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
 
     virtual Mat getImage(string imgpath,string path_prefix);
-
+    // @ Gives initial fiducial Points respective to the mean shape
     virtual bool getInitialShape(Mat& image, CascadeClassifier& cascade);
+
+    virtual bool readMeanShape();
+
 private:
     int numFaces;
     int numLandmarks = 194;
     vector<Point2f> meanShape;
+    vector<vector<Point2f>> initialShape;
 };
 CV_EXPORTS Ptr<KazemiFaceAlign> create();
 }

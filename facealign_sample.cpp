@@ -39,9 +39,10 @@ int main(int argc, const char** argv )
         KazemiFaceAlign train;
         train.readAnnotationList(names, path_prefix);
         train.readtxt(names, landmarks,path_prefix);
-        vector<Point2f>::iterator it;
-        vector<Point2f> temp = landmarks["100032540_1"];
-        it = temp.begin();
-        train.extractMeanShape(landmarks, path_prefix,cascade);
+        train.readMeanShape();
+        Mat image = imread("/home/cooper/gsoc/opencv/modules/objdetect/src/data/train/14403172_1.jpg");
+        imshow("initial image",image);
+        train.getInitialShape(image, cascade);
+        //train.extractMeanShape(landmarks, path_prefix,cascade);
 return 0;
 }

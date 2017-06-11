@@ -74,29 +74,38 @@ bool KazemiFaceAlign::readtxt(vector<cv::String>& filepath, std::map<string, vec
         vector<Point2f> landmarks_temp;
         while(getline(file,line))
         {
-            int increment_x=0,increment_y=0;
-            char x_coord[10],y_cooord[10];
-            while(line[increment_x]!=',')
+            stringstream linestream(line);
+            string token;
+            vector<string> location;
+            while(getline(linestream, token,','))
             {
-                x_coord[increment_x]=line[increment_x];
-                increment_x++;
+                location.push_back(token);
             }
-            string first = string(x_coord);
-            increment_x++;
-            while(increment_x < line.length())
-            {
-                y_cooord[increment_y++]=line[increment_x];
-                increment_x++;
-            }
-            string second = string(y_cooord);
-            Point2f new_point;
-            new_point.x=std::stof(x_coord);
-            new_point.y=std::stof(y_cooord);
-            landmarks_temp.push_back(new_point);
+            landmarks_temp.push_back(Point2f((float)atof(location[0].c_str()),(float)atof(location[1].c_str())));
         }
         file.close();
         landmarks[key] = landmarks_temp;
         //file reading completed
+    }
+    return true;
+}
+
+bool KazemiFaceAlign::readMeanShape()
+{
+    string meanShapefile = "meanshape.txt";
+    ifstream f(meanShapefile.c_str());
+    string line;
+    getline(f,line);
+    while(getline(f,line))
+    {
+        stringstream linestream(line);
+        string token;
+        vector<string> location;
+        while(getline(linestream, token,','))
+        {
+            location.push_back(token);
+        }
+        meanShape.push_back(Point2f((float)atof(location[0].c_str()),(float)atof(location[1].c_str())));
     }
     return true;
 }
@@ -135,6 +144,7 @@ Mat KazemiFaceAlign::getImage(string imgpath, string path_prefix)
 
 bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade)
 {
+    //string meanShapeFileName = "mean_shape.xml";
     std::map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin(); // random inititalization as
     //any face file can be taken by imagelist creator
     //find the face size dimmensions which will be used to center and scale each database image
@@ -173,7 +183,7 @@ bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landma
             cerr<<"No faces found skipping the image"<<endl;
             continue;
         }
-        Point2f currentPoints[2];
+        Point2f currentPoints[3];
         currentPoints[0] = Point2f(currentFaces[0].x,currentFaces[0].y);
         currentPoints[1] = Point2f((currentFaces[0].x + currentFaces[0].width),currentFaces[0].y);
         currentPoints[2] = Point2f(currentFaces[0].x , (currentFaces[0].y + currentFaces[0].height));
@@ -198,7 +208,7 @@ bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landma
     for (int fillMeanShape = 0; fillMeanShape < numLandmarks; ++fillMeanShape)
     {
         meanShape.push_back(mean[fillMeanShape]);
-        meanShapefile << mean[fillMeanShape] << "\n";
+        meanShapefile << mean[fillMeanShape].x << ","<< mean[fillMeanShape].y << "\n";
 
     }
     return true;
@@ -206,8 +216,75 @@ bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landma
 
 bool KazemiFaceAlign::getInitialShape(Mat& image, CascadeClassifier& cascade)
 {
+    if(image.empty() || meanShape.empty())
+    {
+        String error_message = "The data is not loaded properly by train function. Aborting...";
+        CV_Error(Error::StsBadArg, error_message);
+        return false;
+    }
+    //find bounding rectangle for the mean shape
+    // Mat meanX(meanShape.size(),1,CV_8UC1);
+    // Mat meanY(meanShape.size(),1,CV_8UC1);
+    // int pointcount = 0 ;
+    // for (vector<Point2f>::iterator it = meanShape.begin(); it != meanShape.end(); ++it)
+    // {
+    //     meanX.at<double>(pointcount,0) = (*it).x;
+    //     meanY.at<double>(pointcount,0) = (*it).y;
+    //     pointcount++;
+    // }
+    // //find max and min x and y
+     double meanShapeRectminx, meanShapeRectminy, meanShapeRectmaxx, meanShapeRectmaxy;
+    // minMaxLoc(meanX, &meanShapeRectminx, &meanShapeRectmaxx);
+    // minMaxLoc(meanY, &meanShapeRectminy, &meanShapeRectmaxy);
+    double meanX[meanShape.size()] , meanY[meanShape.size()];
+    int pointcount=0;
+    for (vector<Point2f>::iterator it = meanShape.begin(); it != meanShape.end(); ++it)
+    {
+        meanX[pointcount] = (*it).x;
+        meanY[pointcount] = (*it).y;
+        pointcount++;
+    }
+    meanShapeRectminx = *min_element(meanX , meanX + meanShape.size());
+    meanShapeRectmaxx = *max_element(meanX , meanX + meanShape.size());
+    meanShapeRectminy = *min_element(meanY , meanY + meanShape.size());
+    meanShapeRectmaxy = *max_element(meanY , meanY + meanShape.size());
+    Point2f refrencePoints[3];
+    refrencePoints[0] = Point2f(meanShapeRectminx, meanShapeRectminy);
+    refrencePoints[1] = Point2f(meanShapeRectmaxx, meanShapeRectminy);
+    refrencePoints[2] = Point2f(meanShapeRectminx, meanShapeRectmaxy);
+    //apply face detector on the current image
     vector<Rect> facesInImage = faceDetector(image , cascade);
-
+    for(unsigned int facenum =0 ; facenum < facesInImage.size(); facenum++)
+    {
+        Point2f currentPoints[3];
+        currentPoints[0] = Point2f(facesInImage[facenum].x,facesInImage[facenum].y);
+        currentPoints[1] = Point2f((facesInImage[facenum].x + facesInImage[facenum].width),facesInImage[facenum].y);
+        currentPoints[2] = Point2f(facesInImage[facenum].x , (facesInImage[facenum].y + facesInImage[facenum].height));
+        Mat affineMatrix = getAffineTransform(refrencePoints , currentPoints);
+        cout<<affineMatrix<<endl;
+        vector<Point2f> intermediate;
+        //Transform each fiducial Point to get it relative to the initital image
+        for (vector< Point2f >::iterator fiducialIt = meanShape.begin() ; fiducialIt != meanShape.end() ; fiducialIt++ )
+        {
+            Mat fiducialPointMatrix = (Mat_<double>(3,1) << (*fiducialIt).x, (*fiducialIt).y , 1);
+            Mat resultAffineMatrix = (Mat_<double>(3,1)<<0,0,1);
+            resultAffineMatrix = affineMatrix*fiducialPointMatrix;
+            //warpAffine(fiducialPointMatrix , resultAffineMatrix, affineMatrix, resultAffineMatrix.size()); // not working
+            intermediate.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
+        }
+        initialShape.push_back(intermediate);
+        for (vector<vector<Point2f>>::iterator it = initialShape.begin(); it != initialShape.end() ; it++)
+        {
+            vector<Point2f> temp = *it;
+            for (vector<Point2f>::iterator it2 = temp.begin() ; it2 != temp.end() ; it2++)
+            {
+                circle(image , *it2 , 2, Scalar(0,0,255));
+            }
+        }
+        imshow("res",image);
+        waitKey(0);
+    }
+return true;
 }
 
 }
