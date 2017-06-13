@@ -57,22 +57,40 @@ public:
     virtual int getFacesNum() const {return numFaces;}
     // /*@Returns number of landmarks to be considered */
     virtual int getLandmarksNum() const {return numLandmarks;}
-
+    //@ Extracts Mean Shape from the given dataset
     virtual bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
-
+    //@ Applies Haar based facedetector
     virtual vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
-
+    //@ return an image
     virtual Mat getImage(string imgpath,string path_prefix);
-    // @ Gives initial fiducial Points respective to the mean shape
+    //@ Gives initial fiducial Points respective to the mean shape
     virtual bool getInitialShape(Mat& image, CascadeClassifier& cascade);
-
+    //@ Reads MeanShape into a vector
     virtual bool readMeanShape();
+    //@ Returns cascade Depth
+    virtual int getCascadeDepth() const {return cascadeDepth;}
+    //@ Sets cascade's Depth
+    virtual void setCascadeDepth(unsigned int);
+    //@ Returns Tree Depth
+    virtual int getTreeDepth() const {return treeDepth;}
+    //@ Sets Regression Tree's Depth
+    virtual void setTreeDepth(unsigned int);
+
 
 private:
     int numFaces;
     int numLandmarks = 194;
     vector<Point2f> meanShape;
-    vector<vector<Point2f>> initialShape;
+    vector< vector<Point2f> > initialShape;
+    unsigned int cascadeDepth = 10;
+    unsigned int treeDepth = 4;
+    unsigned int num_trees_per_cascade = 500;
+    float nu = 0.1;
+    unsigned long oversamplingAmount = 20;
+    unsigned int feature_pool_size = 400;
+    float lambda = 0.1;
+    unsigned int numTestSplits = 20;
+
 };
 CV_EXPORTS Ptr<KazemiFaceAlign> create();
 }

@@ -51,6 +51,51 @@
 
 namespace cv{
 
+//@ Split Feature Structure
+struct splitFeature
+{
+    unsigned long idx1;
+    unsigned long idx2;
+    float thresh;
+};
+
+//@Regression Tree structure
+struct regressionTree
+{
+    vector<splitFeature> split;
+    vector< vector<Point2f> > leaves;
+};
+
+struct trainSample
+{
+    Mat img;
+    vector<Point2f> residualShape;
+    vector<Point2f> realShape;
+    vector<Point2f> currentShape;
+}
+
+void setCascadeDepth(unsigned int newdepth)
+{
+    if(newdepth < 0)
+    {
+        String errmsg = "Invalid Cascade Depth";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    cascadeDepth = newdepth;
+}
+
+void setTreeDepth(unsigned int newdepth)
+{
+    if(newdepth < 0)
+    {
+        String errmsg = "Invalid Tree Depth";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    treeDepth = newdepth;
+}
+
 //to read the annotation files file of the annotation files
 bool KazemiFaceAlign::readAnnotationList(vector<cv::String>& l, string annotation_path_prefix )
 {
@@ -119,7 +164,7 @@ vector<Rect> KazemiFaceAlign::faceDetector(Mat image,CascadeClassifier& cascade)
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
     cascade.detectMultiScale( gray, faces,
-        1.1, 4, 0
+        1.1, 8, 0
         //|CASCADE_FIND_BIGGEST_OBJECT,
         //|CASCADE_DO_ROUGH_SEARCH
         |CASCADE_SCALE_IMAGE,
@@ -278,7 +323,7 @@ bool KazemiFaceAlign::getInitialShape(Mat& image, CascadeClassifier& cascade)
             vector<Point2f> temp = *it;
             for (vector<Point2f>::iterator it2 = temp.begin() ; it2 != temp.end() ; it2++)
             {
-                circle(image , *it2 , 2, Scalar(0,0,255));
+                circle(image , *it2 , 1, Scalar(0,0,255),2);
             }
         }
         imshow("res",image);

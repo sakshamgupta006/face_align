@@ -40,7 +40,7 @@ int main(int argc, const char** argv )
         train.readAnnotationList(names, path_prefix);
         train.readtxt(names, landmarks,path_prefix);
         train.readMeanShape();
-        Mat image = imread("/home/cooper/gsoc/opencv/modules/objdetect/src/data/train/14403172_1.jpg");
+        Mat image = imread("/home/cooper/gsoc/selfie.jpg");
         imshow("initial image",image);
         train.getInitialShape(image, cascade);
         //train.extractMeanShape(landmarks, path_prefix,cascade);
