@@ -49,6 +49,29 @@ namespace cv{
 class CV_EXPORTS KazemiFaceAlign
 {
 public:
+    //@ Split Feature Structure
+    struct splitFeature
+    {
+        unsigned long idx1;
+        unsigned long idx2;
+        float thresh;
+    };
+    //@ Regression Tree structure
+    struct regressionTree
+    {
+        vector<splitFeature> split;
+        vector< vector<Point2f> > leaves;
+    };
+    //@ Training Sample structure
+    struct trainSample
+    {
+        Mat img;
+        vector<Rect> rect;
+        vector<Point2f> targetShape;
+        vector<Point2f> currentShape;
+        vector<Point2f> residualShape;
+        vector<double> pixelValues;
+    };
     /*@reads the file list(xml) created by imagelist_creator.cpp */
     virtual bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
     /*@Parse the txt file to extract image and its annotations*/
@@ -67,6 +90,8 @@ public:
     virtual bool getInitialShape(Mat& image, CascadeClassifier& cascade);
     //@ Reads MeanShape into a vector
     virtual bool readMeanShape();
+    //@ Calculate distance between given pixel co-ordinates
+    virtual double getDistance(Point2f first , Point2f second);
     //@ Returns cascade Depth
     virtual int getCascadeDepth() const {return cascadeDepth;}
     //@ Sets cascade's Depth
@@ -75,7 +100,12 @@ public:
     virtual int getTreeDepth() const {return treeDepth;}
     //@ Sets Regression Tree's Depth
     virtual void setTreeDepth(unsigned int);
-
+    //@ Randomly Generates splits given a set of pixel co-ordinates
+    virtual splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
+    //@
+    virtual splitFeature splitGenerator(vector<trainSample> samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
+    //@
+    virtual bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
 
 private:
     int numFaces;
@@ -90,6 +120,7 @@ private:
     unsigned int feature_pool_size = 400;
     float lambda = 0.1;
     unsigned int numTestSplits = 20;
+    int numFeature = 400;
 
 };
 CV_EXPORTS Ptr<KazemiFaceAlign> create();

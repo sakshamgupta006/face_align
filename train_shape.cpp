@@ -51,30 +51,7 @@
 
 namespace cv{
 
-//@ Split Feature Structure
-struct splitFeature
-{
-    unsigned long idx1;
-    unsigned long idx2;
-    float thresh;
-};
-
-//@Regression Tree structure
-struct regressionTree
-{
-    vector<splitFeature> split;
-    vector< vector<Point2f> > leaves;
-};
-
-struct trainSample
-{
-    Mat img;
-    vector<Point2f> residualShape;
-    vector<Point2f> realShape;
-    vector<Point2f> currentShape;
-}
-
-void setCascadeDepth(unsigned int newdepth)
+void KazemiFaceAlign::setCascadeDepth(unsigned int newdepth)
 {
     if(newdepth < 0)
     {
@@ -85,7 +62,7 @@ void setCascadeDepth(unsigned int newdepth)
     cascadeDepth = newdepth;
 }
 
-void setTreeDepth(unsigned int newdepth)
+void KazemiFaceAlign::setTreeDepth(unsigned int newdepth)
 {
     if(newdepth < 0)
     {
@@ -164,7 +141,7 @@ vector<Rect> KazemiFaceAlign::faceDetector(Mat image,CascadeClassifier& cascade)
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
     cascade.detectMultiScale( gray, faces,
-        1.1, 8, 0
+        1.1, 2, 0
         //|CASCADE_FIND_BIGGEST_OBJECT,
         //|CASCADE_DO_ROUGH_SEARCH
         |CASCADE_SCALE_IMAGE,
@@ -332,4 +309,50 @@ bool KazemiFaceAlign::getInitialShape(Mat& image, CascadeClassifier& cascade)
 return true;
 }
 
+double KazemiFaceAlign::getDistance(Point2f first , Point2f second)
+{
+    return sqrt(pow((first.x - second.x),2) + pow((first.y - second.y),2));
+}
+
+splitFeature KazemiFaceAlign::randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates)
+{
+    splitFeature feature;
+    double acceptProbability;
+    RNG rnd;
+    do
+    {
+        feature.idx1 = rnd.uniform(0,numFeature);
+        feature.idx2 = rnd.uniform(0,numFeature);
+        double dist = getDistance(pixelCoordinates[feature.idx1] , pixelCoordinates[feature.idx2]);
+        acceptProbability = exp(-dist/lambda);
+    }
+    while(feature.idx1 == feature.idx2 || !(acceptProbability > rnd.uniform(0,1)));
+    feature.thresh = rnd.uniform(double(-255),double(255)); //Check Validity
+    return feature;
+}
+
+splitFeature KazemiFaceAlign::splitGenerator(vector<trainSample> samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end )
+{
+    vector<splitFeature> features;
+    for (unsigned int i = 0; i < numTestSplits; ++i)
+        features.push_back(randomSplitFeatureGenerator(pixelCoordinates));
+    vector<Mat> leftSums;
+}
+
+bool KazemiFaceAlign::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
+{
+    if(pixelCoordinates.size() == 0)
+    {
+        String errmsg = "Invalid Pixel Co-ordinates";
+        CV_ERROR(Error::StsBadArg, errmsg);
+        return false;
+    }
+    for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
+    {
+        Mat image = sample[i].img;
+        cvtColor(image,image,COLOR_BGR2GRAY);
+        sample.pixelValues.push_back(image.at<double>(pixelCoordinates[i]));
+    }
+    return true;
+}
 }
