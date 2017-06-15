@@ -11,4 +11,5 @@ I am being mentored by [Simon Niklaus](https://www.google.co.in/url?sa=t&rct=j&q
 ## Timeline
 A detailed timeline of the project can be found on [Google Calander](https://calendar.google.com/calendar/embed?src=q5686lb1opb5kfrqatjslo2060%40group.calendar.google.com&ctz=Asia/Calcutta)
 
-
+## Blog
+Blog regarding the GSOC project journey can be found [Here](saksham-gsoc2017.blogspot.com).
