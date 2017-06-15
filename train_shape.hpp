@@ -49,29 +49,10 @@ namespace cv{
 class CV_EXPORTS KazemiFaceAlign
 {
 public:
-    //@ Split Feature Structure
-    struct splitFeature
-    {
-        unsigned long idx1;
-        unsigned long idx2;
-        float thresh;
-    };
-    //@ Regression Tree structure
-    struct regressionTree
-    {
-        vector<splitFeature> split;
-        vector< vector<Point2f> > leaves;
-    };
-    //@ Training Sample structure
-    struct trainSample
-    {
-        Mat img;
-        vector<Rect> rect;
-        vector<Point2f> targetShape;
-        vector<Point2f> currentShape;
-        vector<Point2f> residualShape;
-        vector<double> pixelValues;
-    };
+    //@ Returns the left of child the Regression Tree
+    inline unsigned long leftChild (unsigned long idx) { return 2*idx + 1; }
+    //@ Returns the right child of the Regression Tree
+    inline unsigned long rightChild (unsigned long idx) { return 2*idx + 2; }
     /*@reads the file list(xml) created by imagelist_creator.cpp */
     virtual bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
     /*@Parse the txt file to extract image and its annotations*/
@@ -82,7 +63,7 @@ public:
     virtual int getLandmarksNum() const {return numLandmarks;}
     //@ Extracts Mean Shape from the given dataset
     virtual bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
-    //@ Applies Haar based facedetector
+    //@ Applies Haar based facedetectorl
     virtual vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
     //@ return an image
     virtual Mat getImage(string imgpath,string path_prefix);
@@ -106,7 +87,10 @@ public:
     virtual splitFeature splitGenerator(vector<trainSample> samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
     //@
     virtual bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
-
+    //@
+    virtual regressionTree buildRegressionTree(vector<trainSample> samples, vector<Point2f> pixelCoordinates);
+    //@
+    virtual unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
 private:
     int numFaces;
     int numLandmarks = 194;
