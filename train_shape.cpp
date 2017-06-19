@@ -40,127 +40,18 @@
 //M*/
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
+#include "objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "train_shape.hpp"
 #include <bits/stdc++.h>
-#include "/home/cooper/gsoc/opencv/modules/objdetect/src/train_shape.hpp"
+
+using namespace std;
+using namespace cv;
 
 namespace cv{
 
-//@ Split Feature Structure
-struct splitFeature
-{
-    unsigned long idx1;
-    unsigned long idx2;
-    float thresh;
-};
-//@ Regression Tree structure
-struct regressionTree
-{
-    vector<splitFeature> split;
-    vector< vector<Point2f> > leaves;
-};
-//@ Training Sample structure
-struct trainSample
-{
-    Mat img;
-    vector<Rect> rect;
-    vector<Point2f> targetShape;
-    vector<Point2f> currentShape;
-    vector<Point2f> residualShape;
-    vector<double> pixelValues;
-};
-
-class KazemiFaceAlign : public KazemiFaceAligninclude
-{
-    public:
-        //*@Returns number of faces detected in the image */
-        int getFacesNum() const {return numFaces;}
-        // /*@Returns number of landmarks to be considered */
-        int getLandmarksNum() const {return numLandmarks;}
-        //@ Returns cascade Depth
-        int getCascadeDepth() const {return cascadeDepth;}
-        //@ Sets cascade's Depth
-        void setCascadeDepth(unsigned int);
-        //@ Returns Tree Depth
-        int getTreeDepth() const {return treeDepth;}
-        //@ Sets Regression Tree's Depth
-        void setTreeDepth(unsigned int);
-        
-        //@ Returns the left of child the Regression Tree
-        unsigned long leftChild (unsigned long idx);
-        //@ Returns the right child of the Regression Tree
-        unsigned long rightChild (unsigned long idx);
-        /*@reads the file list(xml) created by imagelist_creator.cpp */
-        bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
-        /*@Parse the txt file to extract image and its annotations*/
-        bool readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix);
-        //@ Extracts Mean Shape from the given dataset
-        bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
-        //@ Applies Haar based facedetectorl
-        vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
-        //@ return an image
-        Mat getImage(string imgpath,string path_prefix);
-        //@ Gives initial fiducial Points respective to the mean shape
-        bool getInitialShape(Mat& image, CascadeClassifier& cascade);
-        //@ Reads MeanShape into a vector
-        bool readMeanShape();
-        //@ Calculate distance between given pixel co-ordinates
-        double getDistance(Point2f first , Point2f second);
-
-        KazemiFaceAlign()
-        {
-            readMeanShape();
-            numFaces = 1;
-            numLandmarks = 194;
-            cascadeDepth = 10;
-            treeDepth = 4;
-            num_trees_per_cascade = 500;
-            nu = 0.1;
-            oversamplingAmount = 20;
-            feature_pool_size = 400;
-            lambda = 0.1;
-            numTestSplits = 20;
-            numFeature = 400;
-        }
-
-    protected:
-        //@ Randomly Generates splits given a set of pixel co-ordinates
-        splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
-        //@
-        splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
-        //@
-        bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
-        //@
-        regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
-        //@
-        unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
-    
-    private:
-        int numFaces;
-        int numLandmarks;
-        vector<Point2f> meanShape;
-        vector< vector<Point2f> > initialShape;
-        unsigned int cascadeDepth;
-        unsigned int treeDepth;
-        unsigned int num_trees_per_cascade;
-        float nu;
-        unsigned long oversamplingAmount;
-        unsigned int feature_pool_size;
-        float lambda;
-        unsigned int numTestSplits;
-        int numFeature;
-
-
-
-};
-
-
-
-
-
-
-void KazemiFaceAlign::setCascadeDepth(unsigned int newdepth)
+void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
 {
     if(newdepth < 0)
     {
@@ -171,7 +62,7 @@ void KazemiFaceAlign::setCascadeDepth(unsigned int newdepth)
     cascadeDepth = newdepth;
 }
 
-void KazemiFaceAlign::setTreeDepth(unsigned int newdepth)
+void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
 {
     if(newdepth < 0)
     {
@@ -193,7 +84,7 @@ unsigned long rightChild(unsigned long idx)
 }
 
 //to read the annotation files file of the annotation files
-bool KazemiFaceAlign::readAnnotationList(vector<cv::String>& l, string annotation_path_prefix )
+bool KazemiFaceAlignImpl::readAnnotationList(vector<cv::String>& l, string annotation_path_prefix )
 {
     string annotationPath = annotation_path_prefix + "*.txt";
     glob(annotationPath,l,false);
@@ -201,7 +92,7 @@ bool KazemiFaceAlign::readAnnotationList(vector<cv::String>& l, string annotatio
 }
 
 //read txt files iteratively opening image and its annotations
-bool KazemiFaceAlign::readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix)
+bool KazemiFaceAlignImpl::readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix)
 {
     //txt file read initiated
     vector<cv::String>::iterator fileiterator = filepath.begin();
@@ -231,7 +122,7 @@ bool KazemiFaceAlign::readtxt(vector<cv::String>& filepath, std::map<string, vec
     return true;
 }
 
-bool KazemiFaceAlign::readMeanShape()
+bool KazemiFaceAlignImpl::readMeanShape()
 {
     string meanShapefile = "meanshape.txt";
     ifstream f(meanShapefile.c_str());
@@ -251,7 +142,7 @@ bool KazemiFaceAlign::readMeanShape()
     return true;
 }
 
-vector<Rect> KazemiFaceAlign::faceDetector(Mat image,CascadeClassifier& cascade)
+vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& cascade)
 {
     vector<Rect> faces;
     int scale = 1;
@@ -278,12 +169,12 @@ vector<Rect> KazemiFaceAlign::faceDetector(Mat image,CascadeClassifier& cascade)
     return faces;
 }
 
-Mat KazemiFaceAlign::getImage(string imgpath, string path_prefix)
+Mat KazemiFaceAlignImpl::getImage(string imgpath, string path_prefix)
 {
     return imread(path_prefix + imgpath + ".jpg");
 }
 
-bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade)
+bool KazemiFaceAlignImpl::extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade)
 {
     //string meanShapeFileName = "mean_shape.xml";
     std::map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin(); // random inititalization as
@@ -355,7 +246,7 @@ bool KazemiFaceAlign::extractMeanShape(std::map<string, vector<Point2f>>& landma
     return true;
 }
 
-bool KazemiFaceAlign::getInitialShape(Mat& image, CascadeClassifier& cascade)
+bool KazemiFaceAlignImpl::getInitialShape(Mat& image, CascadeClassifier& cascade)
 {
     if(image.empty() || meanShape.empty())
     {
@@ -418,12 +309,12 @@ bool KazemiFaceAlign::getInitialShape(Mat& image, CascadeClassifier& cascade)
 return true;
 }
 
-double KazemiFaceAlign::getDistance(Point2f first , Point2f second)
+double KazemiFaceAlignImpl::getDistance(Point2f first , Point2f second)
 {
     return sqrt(pow((first.x - second.x),2) + pow((first.y - second.y),2));
 }
 
-splitFeature KazemiFaceAlign::randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates)
+splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates)
 {
     splitFeature feature;
     double acceptProbability;
@@ -440,7 +331,7 @@ splitFeature KazemiFaceAlign::randomSplitFeatureGenerator(vector<Point2f>& pixel
     return feature;
 }
 
-splitFeature KazemiFaceAlign::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end )
+splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end )
 {
     vector<splitFeature> features;
     for (unsigned int i = 0; i < numTestSplits; ++i)
@@ -448,7 +339,7 @@ splitFeature KazemiFaceAlign::splitGenerator(vector<trainSample>& samples, vecto
     vector<Mat> leftSums;
 }
 
-bool KazemiFaceAlign::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
+bool KazemiFaceAlignImpl::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
 {
     Mat image = sample.img;
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
@@ -459,7 +350,7 @@ bool KazemiFaceAlign::extractPixelValues(trainSample &sample , vector<Point2f> p
     return true;
 }
 /*
-KazemiFaceAlign::regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+KazemiFaceAlignImpl::regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
 {
     regressionTree tree;
     //Parts queue will store the extent of leaf nodes
@@ -499,7 +390,7 @@ KazemiFaceAlign::regressionTree KazemiFaceAlign::buildRegressionTree(vector<trai
 return tree;
 }
 */
-unsigned long KazemiFaceAlign::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
+unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
 {
     unsigned long initial = start;
     for (unsigned long j = 0; j < end; j++)
