@@ -38,41 +38,127 @@
 // the use of this software, even if advised of the possibility of such damage.
 //
 //M*/
+#include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/imgproc.hpp"
-#include <iostream>
-#include <fstream>
-#include <iostream>
-#include <opencv2/core.hpp>
-#include <string>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 #include <bits/stdc++.h>
 #include "/home/cooper/gsoc/opencv/modules/objdetect/src/train_shape.hpp"
 
 namespace cv{
+
 //@ Split Feature Structure
 struct splitFeature
-    {
-        unsigned long idx1;
-        unsigned long idx2;
-        float thresh;
-    };
+{
+    unsigned long idx1;
+    unsigned long idx2;
+    float thresh;
+};
 //@ Regression Tree structure
 struct regressionTree
-    {
-        vector<splitFeature> split;
-        vector< vector<Point2f> > leaves;
-    };
+{
+    vector<splitFeature> split;
+    vector< vector<Point2f> > leaves;
+};
 //@ Training Sample structure
 struct trainSample
-    {
-        Mat img;
-        vector<Rect> rect;
-        vector<Point2f> targetShape;
-        vector<Point2f> currentShape;
-        vector<Point2f> residualShape;
-        vector<double> pixelValues;
-    };
+{
+    Mat img;
+    vector<Rect> rect;
+    vector<Point2f> targetShape;
+    vector<Point2f> currentShape;
+    vector<Point2f> residualShape;
+    vector<double> pixelValues;
+};
+
+class KazemiFaceAlign : public KazemiFaceAligninclude
+{
+    public:
+        //*@Returns number of faces detected in the image */
+        int getFacesNum() const {return numFaces;}
+        // /*@Returns number of landmarks to be considered */
+        int getLandmarksNum() const {return numLandmarks;}
+        //@ Returns cascade Depth
+        int getCascadeDepth() const {return cascadeDepth;}
+        //@ Sets cascade's Depth
+        void setCascadeDepth(unsigned int);
+        //@ Returns Tree Depth
+        int getTreeDepth() const {return treeDepth;}
+        //@ Sets Regression Tree's Depth
+        void setTreeDepth(unsigned int);
+        
+        //@ Returns the left of child the Regression Tree
+        unsigned long leftChild (unsigned long idx);
+        //@ Returns the right child of the Regression Tree
+        unsigned long rightChild (unsigned long idx);
+        /*@reads the file list(xml) created by imagelist_creator.cpp */
+        bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
+        /*@Parse the txt file to extract image and its annotations*/
+        bool readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix);
+        //@ Extracts Mean Shape from the given dataset
+        bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
+        //@ Applies Haar based facedetectorl
+        vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
+        //@ return an image
+        Mat getImage(string imgpath,string path_prefix);
+        //@ Gives initial fiducial Points respective to the mean shape
+        bool getInitialShape(Mat& image, CascadeClassifier& cascade);
+        //@ Reads MeanShape into a vector
+        bool readMeanShape();
+        //@ Calculate distance between given pixel co-ordinates
+        double getDistance(Point2f first , Point2f second);
+
+        KazemiFaceAlign()
+        {
+            readMeanShape();
+            numFaces = 1;
+            numLandmarks = 194;
+            cascadeDepth = 10;
+            treeDepth = 4;
+            num_trees_per_cascade = 500;
+            nu = 0.1;
+            oversamplingAmount = 20;
+            feature_pool_size = 400;
+            lambda = 0.1;
+            numTestSplits = 20;
+            numFeature = 400;
+        }
+
+    protected:
+        //@ Randomly Generates splits given a set of pixel co-ordinates
+        splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
+        //@
+        splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
+        //@
+        bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
+        //@
+        regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
+        //@
+        unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
+    
+    private:
+        int numFaces;
+        int numLandmarks;
+        vector<Point2f> meanShape;
+        vector< vector<Point2f> > initialShape;
+        unsigned int cascadeDepth;
+        unsigned int treeDepth;
+        unsigned int num_trees_per_cascade;
+        float nu;
+        unsigned long oversamplingAmount;
+        unsigned int feature_pool_size;
+        float lambda;
+        unsigned int numTestSplits;
+        int numFeature;
+
+
+
+};
+
+
+
+
+
 
 void KazemiFaceAlign::setCascadeDepth(unsigned int newdepth)
 {
@@ -94,6 +180,16 @@ void KazemiFaceAlign::setTreeDepth(unsigned int newdepth)
         return ;
     }
     treeDepth = newdepth;
+}
+
+unsigned long leftChild(unsigned long idx)
+{
+    return 2*idx + 1;
+}
+
+unsigned long rightChild(unsigned long idx)
+{
+    return 2*idx + 2;
 }
 
 //to read the annotation files file of the annotation files
@@ -354,35 +450,17 @@ splitFeature KazemiFaceAlign::splitGenerator(vector<trainSample>& samples, vecto
 
 bool KazemiFaceAlign::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
 {
-    if(pixelCoordinates.empty())
-    {
-        String errmsg = "Invalid Pixel Co-ordinates";
-        CV_ERROR(Error::StsBadArg, errmsg);
-        return false;
-    }
+    Mat image = sample.img;
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
     {
-        Mat image = sample[i].img;
         cvtColor(image,image,COLOR_BGR2GRAY);
         sample.pixelValues.push_back(image.at<double>(pixelCoordinates[i]));
     }
     return true;
 }
-
-regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+/*
+KazemiFaceAlign::regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
 {
-    if(pixelCoordinates.empty())
-    {
-        String errmsg = "No pixel Co-ordinates while building Regression Tree";
-        CV_ERROR(Error::StsBadArg, errmsg);
-        return;
-    }
-    if(samples.empty())
-    {
-        String errmsg = "Samples did not populate. Building Regression tree failed.. ";
-        CV_ERROR(Error::StsBadArg, errmsg);
-        return;
-    }
     regressionTree tree;
     //Parts queue will store the extent of leaf nodes
     deque< pair<unsigned long, unsigned long > >  parts;
@@ -392,8 +470,10 @@ regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples
     ///----------SCOPE OF THREADING---------------------////
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-        samples[i].residualShape = samples[i].targetShape - samples[i].currentShape;
-        sums[0] += samples[i].residualShape;
+        //std::transform (samples[i].targetShape.begin(), samples[i].targetShape.end(), samples[i].currentShape.begin(), samples[i].residualShape.begin(), std::minus<Point2f>());
+        //samples[i].residualShape = samples[i].targetShape - samples[i].currentShape;
+        //sums[0] += samples[i].residualShape;
+        //std::transform(samples[i].residualShape.begin(), samples[i].residualShape.end(), sums[0].begin(), sums[0].begin(), std::plus<Point2f>());
     }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
@@ -404,20 +484,21 @@ regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples
         tree.split.push_back(split);
         const unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
         parts.push_back(make_pair(rangeleaf.first, mid));
-        parts.push_back(make_pair(mid, range.second));
+        parts.push_back(make_pair(mid, rangeleaf.second));
     }
     tree.leaves.resize(parts.size());
     vector<double> currentCount[samples[0].targetShape.size()];
     //Use parts value to calculate average value of leafs
     for (unsigned long int i = 0; i < parts.size(); ++i)
     {
-        currentCount = 0;
+        //currentCount = 0;
         for (unsigned long j = parts[i].first; j < parts[i].second; ++j)
-            currentCount += samples[j].currentShape;
+            //std::transform(samples[i].currentShape.begin(), samples[i].currentShape.end(), sums[0].begin(), sums[0].begin(), std::plus<Point2f>());
+            //currentCount += samples[j].currentShape;
     }
 return tree;
 }
-
+*/
 unsigned long KazemiFaceAlign::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
 {
     unsigned long initial = start;
@@ -425,7 +506,7 @@ unsigned long KazemiFaceAlign::partitionSamples(splitFeature split, vector<train
     {
         if((float)samples[j].pixelValues[split.idx1] - (float)samples[j].pixelValues[split.idx2] > split.thresh)
         {
-            swap(samples[i],samples[j]);
+            swap(samples[initial],samples[j]);
             initial++;
         }
     }

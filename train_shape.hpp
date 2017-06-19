@@ -46,21 +46,21 @@
 using namespace std;
 
 namespace cv{
-class CV_EXPORTS KazemiFaceAlign
+/** @brief Implementation of face alignnment from the paper:
+ *  <a href="https://pdfs.semanticscholar.org/d78b/6a5b0dcaa81b1faea5fb0000045a62513567.pdf">Vahid Kazemi and Josephine Sullivan, "One Millisecond Face Alignment with an Ensemble of Regression Trees."
+ *  Computer Vision and Pattern Recognition, 2014. CVPR 2014.</a>
+ */
+class CV_EXPORTS KazemiFaceAligninclude
 {
 public:
     //@ Returns the left of child the Regression Tree
-    inline unsigned long leftChild (unsigned long idx) { return 2*idx + 1; }
+    virtual unsigned long leftChild (unsigned long idx);
     //@ Returns the right child of the Regression Tree
-    inline unsigned long rightChild (unsigned long idx) { return 2*idx + 2; }
+    virtual unsigned long rightChild (unsigned long idx);
     /*@reads the file list(xml) created by imagelist_creator.cpp */
     virtual bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
     /*@Parse the txt file to extract image and its annotations*/
     virtual bool readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix);
-    // /*@Returns number of faces detected in the image */
-    virtual int getFacesNum() const {return numFaces;}
-    // /*@Returns number of landmarks to be considered */
-    virtual int getLandmarksNum() const {return numLandmarks;}
     //@ Extracts Mean Shape from the given dataset
     virtual bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
     //@ Applies Haar based facedetectorl
@@ -73,40 +73,7 @@ public:
     virtual bool readMeanShape();
     //@ Calculate distance between given pixel co-ordinates
     virtual double getDistance(Point2f first , Point2f second);
-    //@ Returns cascade Depth
-    virtual int getCascadeDepth() const {return cascadeDepth;}
-    //@ Sets cascade's Depth
-    virtual void setCascadeDepth(unsigned int);
-    //@ Returns Tree Depth
-    virtual int getTreeDepth() const {return treeDepth;}
-    //@ Sets Regression Tree's Depth
-    virtual void setTreeDepth(unsigned int);
-    //@ Randomly Generates splits given a set of pixel co-ordinates
-    virtual splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
-    //@
-    virtual splitFeature splitGenerator(vector<trainSample> samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
-    //@
-    virtual bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
-    //@
-    virtual regressionTree buildRegressionTree(vector<trainSample> samples, vector<Point2f> pixelCoordinates);
-    //@
-    virtual unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
-private:
-    int numFaces;
-    int numLandmarks = 194;
-    vector<Point2f> meanShape;
-    vector< vector<Point2f> > initialShape;
-    unsigned int cascadeDepth = 10;
-    unsigned int treeDepth = 4;
-    unsigned int num_trees_per_cascade = 500;
-    float nu = 0.1;
-    unsigned long oversamplingAmount = 20;
-    unsigned int feature_pool_size = 400;
-    float lambda = 0.1;
-    unsigned int numTestSplits = 20;
-    int numFeature = 400;
-
 };
-CV_EXPORTS Ptr<KazemiFaceAlign> create();
+CV_EXPORTS Ptr<KazemiFaceAligninclude> create();
 }
 #endif
