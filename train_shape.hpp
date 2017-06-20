@@ -43,16 +43,50 @@
 
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
-#include "objdetect.hpp"
+#include "../include/opencv2/objdetect.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;
 
 namespace cv{
-class KazemiFaceAlignImpl : public KazemiFaceAlign
+//! struct for creating a split Feature in the regression Tree
+struct splitFeature
+{
+    //! index which stores the left subtree value of the split for the regression tree
+    unsigned long idx1;
+    //! index which stores the right subtree value of the split for the regression tree
+    unsigned long idx2;
+    //! threshold which decides wheather the split is good or not
+    float thresh;
+};
+//! struct for holding a Regression Tree
+struct regressionTree
+{
+    //! vector that contains split features which forms the decision nodes of the tree
+    vector<splitFeature> split;
+    //! vector that contains the annotation values provided by the Regression Tree at the terminal nodes
+    vector< vector<Point2f> > leaves;
+};
+//! struct for holding the training samples attributes during training of Regression Tree's
+struct trainSample
+{
+    //! Mat object to store the image from the dataset
+    Mat img;
+    //! vector to store faces detected using any standard facial detector
+    vector<Rect> rect;
+    //! vector to store final annotations of the face
+    vector<Point2f> targetShape;
+    //! vector that will contain the current annotations when regression tree is being trained
+    vector<Point2f> currentShape;
+    //! vector that will contain the residual annotations that is obtained using current and target annotations
+    vector<Point2f> residualShape;
+    //! vector to store the pixel values at the desired annotations locations.
+    vector<double> pixelValues;
+};
+class KazemiFaceAlignImpl
 {
     public:
-        KazemiFaceAlignImpl();
+        //KazemiFaceAlignImpl();
         virtual ~KazemiFaceAlignImpl();
         //*@Returns number of faces detected in the image */
         int getFacesNum() const {return numFaces;}
@@ -66,7 +100,6 @@ class KazemiFaceAlignImpl : public KazemiFaceAlign
         int getTreeDepth() const {return treeDepth;}
         //@ Sets Regression Tree's Depth
         void setTreeDepth(unsigned int);
-        
         //@ Returns the left of child the Regression Tree
         unsigned long leftChild (unsigned long idx);
         //@ Returns the right child of the Regression Tree
@@ -87,7 +120,10 @@ class KazemiFaceAlignImpl : public KazemiFaceAlign
         bool readMeanShape();
         //@ Calculate distance between given pixel co-ordinates
         double getDistance(Point2f first , Point2f second);
-
+        //@ Calculate different between the annotations
+        vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current);
+        //A Calculate Sum of annotation vectors
+        vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current)
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
@@ -96,7 +132,7 @@ class KazemiFaceAlignImpl : public KazemiFaceAlign
             numLandmarks = 194;
             cascadeDepth = 10;
             treeDepth = 4;
-            num_trees_per_cascade = 500;
+            numTreesperCascade = 500;
             nu = 0.1;
             oversamplingAmount = 20;
             feature_pool_size = 400;
@@ -109,14 +145,14 @@ class KazemiFaceAlignImpl : public KazemiFaceAlign
         //@ Randomly Generates splits given a set of pixel co-ordinates
         splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
         //@
-        splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end);
+        splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
+                                    unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum);
         //@
         bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
         //@
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
         //@
         unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
-    
     private:
         int numFaces;
         int numLandmarks;
@@ -124,7 +160,7 @@ class KazemiFaceAlignImpl : public KazemiFaceAlign
         vector< vector<Point2f> > initialShape;
         unsigned int cascadeDepth;
         unsigned int treeDepth;
-        unsigned int num_trees_per_cascade;
+        unsigned int numTreesperCascade;
         float nu;
         unsigned long oversamplingAmount;
         unsigned int feature_pool_size;

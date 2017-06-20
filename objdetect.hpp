@@ -216,7 +216,7 @@ public:
 };
 //! struct for creating a split Feature in the regression Tree
 struct splitFeature
-{   
+{
     //! index which stores the left subtree value of the split for the regression tree
     unsigned long idx1;
     //! index which stores the right subtree value of the split for the regression tree
@@ -235,7 +235,7 @@ struct regressionTree
 //! struct for holding the training samples attributes during training of Regression Tree's
 struct trainSample
 {
-    //! Mat object to store the image from the dataset  
+    //! Mat object to store the image from the dataset
     Mat img;
     //! vector to store faces detected using any standard facial detector
     vector<Rect> rect;
@@ -256,7 +256,7 @@ public:
     KazemiFaceAlign();
     /** @brief  Initiates Face alignment module
 
-    @param 
+    @param
     */
     virtual void trainKazemiFaceAlign()
     /** @brief Initiates training of Face alignment module

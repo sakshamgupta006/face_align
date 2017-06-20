@@ -40,7 +40,7 @@
 //M*/
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
-#include "objdetect.hpp"
+#include "../include/opencv2/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "train_shape.hpp"
@@ -331,12 +331,59 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
     return feature;
 }
 
-splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long begin , unsigned long end )
+splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
+                                                unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum)
 {
     vector<splitFeature> features;
     for (unsigned int i = 0; i < numTestSplits; ++i)
         features.push_back(randomSplitFeatureGenerator(pixelCoordinates));
-    vector<Mat> leftSums;
+    vector<Point2f> leftSums;
+    vector<unsigned long> leftCount;
+    ///////--------------------SCOPE OF THREADING----------------------/////////////
+    for (unsigned long i = start; i < end ; ++i)
+    {
+        for (unsigned long j = 0; j < numTestSplits; ++j)
+        {
+            if((float)samples[i].pixelValues[feats[j].idx1] - (float)samples[i].pixelValues[feats[j].idx2] > feats[j].thresh)
+            {
+                leftSums[j] += samples[i].residualShape;
+                ++leftCount[j];
+            }
+        }
+    }
+    ///////--------------------SCOPE OF THREADING----------------------/////////////
+
+    //Select the best feature
+    double bestScore = -1;
+    unsigned long bestFeature = 0;
+    Point2f tempFeature;
+    for (unsigned long i = 0; i < numTestSplits; ++i)
+    {
+        double currentScore = 0;
+        unsigned long rightCount = end - start - leftCount[i];
+        if(leftCount[i] != 0 && rightCount != 0)
+        {
+            tempFeature = sum - leftSums[i];
+            //To calculate score
+            double leftSumsDot = pow(leftSums[i].x,2) + pow(leftSums[i].y,2);
+            double tempFeatureDot = pow(temp.x,2) + pow(temp.y,2);
+            currentScore = leftSumsDot/leftCount[i] + tempFeatureDot/rightCount[i];
+            if(currentScore > bestScore)
+            {
+                bestScore = currentScore;
+                bestFeature = i;
+            }
+        }
+    }
+    leftSums[bestFeature].swap(leftSum);
+    if(leftSum.size() != 0)
+        rightSum = sum - leftSum;
+    else
+    {
+        rightSum = sum;
+        leftSum = Point2f(0,0);
+    }
+return features[bestFeature];
 }
 
 bool KazemiFaceAlignImpl::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
@@ -349,8 +396,8 @@ bool KazemiFaceAlignImpl::extractPixelValues(trainSample &sample , vector<Point2
     }
     return true;
 }
-/*
-KazemiFaceAlignImpl::regressionTree KazemiFaceAlign::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+
+regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
 {
     regressionTree tree;
     //Parts queue will store the extent of leaf nodes
@@ -361,17 +408,15 @@ KazemiFaceAlignImpl::regressionTree KazemiFaceAlign::buildRegressionTree(vector<
     ///----------SCOPE OF THREADING---------------------////
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-        //std::transform (samples[i].targetShape.begin(), samples[i].targetShape.end(), samples[i].currentShape.begin(), samples[i].residualShape.begin(), std::minus<Point2f>());
-        //samples[i].residualShape = samples[i].targetShape - samples[i].currentShape;
-        //sums[0] += samples[i].residualShape;
-        //std::transform(samples[i].residualShape.begin(), samples[i].residualShape.end(), sums[0].begin(), sums[0].begin(), std::plus<Point2f>());
+        samples[i].residualShape = calcDiff(samples[i.targetShape , samples[i].currentShape]);
+        sums = calcSum(sums,samples[i].residualShape);
     }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
     {
         pair<unsigned long, unsigned long> rangeleaf = parts.front();
         parts.pop_front();
-        splitFeature split = splitGenerator(samples, pixelCoordinates, rangeleaf.first, rangeleaf.second, sums[leftChild(i)], sums[rightChild(i)]);
+        splitFeature split = splitGenerator(samples, pixelCoordinates, rangeleaf.first, rangeleaf.second, sums[i], sums[leftChild(i)], sums[rightChild(i)]);
         tree.split.push_back(split);
         const unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
         parts.push_back(make_pair(rangeleaf.first, mid));
@@ -389,7 +434,7 @@ KazemiFaceAlignImpl::regressionTree KazemiFaceAlign::buildRegressionTree(vector<
     }
 return tree;
 }
-*/
+
 unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
 {
     unsigned long initial = start;
@@ -404,5 +449,36 @@ unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<t
     return initial;
 }
 
+vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current)
+{
+    vector<Point2f> resultant;
+    for (unsigned long i = 0; i < target.size(); ++i)
+    {
+        resultant[i] = target[i] - current[i];
+    }
+    return resultant;
+}
+
+vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current)
+{
+    vector<Point2f> resultant;
+    for (unsigned long i = 0; i < target.size(); ++i)
+    {
+        resultant[i] = target[i] + current[i];
+    }
+    return resultant;
+}
+
+vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+{
+    //for cascade of regressrs
+    vector<regressionTree> forest;
+    for (unsigned long i = 0; i < numTreesperCascade; ++i)
+    {
+        regressionTree tree = buildRegressionTree(samples,pixelCoordinates);
+        forest.push_back(tree);
+    }
+    return forest;
+}
 
 }

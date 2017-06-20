@@ -7,8 +7,7 @@
 #include <opencv2/core.hpp>
 #include <string>
 #include <bits/stdc++.h>
-#include "train_shape.hpp"
-#include "objdetect.hpp"
+#include "/home/cooper/gsoc/opencv/modules/objdetect/src/train_shape.hpp"
 
 using namespace std;
 using namespace cv;
