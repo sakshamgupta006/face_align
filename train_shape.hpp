@@ -123,7 +123,7 @@ class KazemiFaceAlignImpl
         //@ Calculate different between the annotations
         vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current);
         //A Calculate Sum of annotation vectors
-        vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current)
+        vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current);
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
@@ -153,6 +153,8 @@ class KazemiFaceAlignImpl
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
         //@
         unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
+        //@Intitiates the training of Cascade
+        bool trainCascade();
     private:
         int numFaces;
         int numLandmarks;
