@@ -49,7 +49,8 @@
 using namespace std;
 using namespace cv;
 
-namespace cv{
+namespace cv
+{
 
 void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
 {
@@ -61,6 +62,8 @@ void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
     }
     cascadeDepth = newdepth;
 }
+
+//KazemiFaceAlignImpl::~KazemiFaceAlignImpl()
 
 void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
 {
@@ -139,6 +142,7 @@ bool KazemiFaceAlignImpl::readMeanShape()
         }
         meanShape.push_back(Point2f((float)atof(location[0].c_str()),(float)atof(location[1].c_str())));
     }
+    calcMeanShapeBounds();
     return true;
 }
 
@@ -265,7 +269,7 @@ bool KazemiFaceAlignImpl::getInitialShape(Mat& image, CascadeClassifier& cascade
     //     pointcount++;
     // }
     // //find max and min x and y
-     double meanShapeRectminx, meanShapeRectminy, meanShapeRectmaxx, meanShapeRectmaxy;
+    double meanShapeRectminx, meanShapeRectminy, meanShapeRectmaxx, meanShapeRectmaxy;
     // minMaxLoc(meanX, &meanShapeRectminx, &meanShapeRectmaxx);
     // minMaxLoc(meanY, &meanShapeRectminy, &meanShapeRectmaxy);
     double meanX[meanShape.size()] , meanY[meanShape.size()];
@@ -293,7 +297,6 @@ bool KazemiFaceAlignImpl::getInitialShape(Mat& image, CascadeClassifier& cascade
         currentPoints[1] = Point2f((facesInImage[facenum].x + facesInImage[facenum].width),facesInImage[facenum].y);
         currentPoints[2] = Point2f(facesInImage[facenum].x , (facesInImage[facenum].y + facesInImage[facenum].height));
         Mat affineMatrix = getAffineTransform(refrencePoints , currentPoints);
-        cout<<affineMatrix<<endl;
         vector<Point2f> intermediate;
         //Transform each fiducial Point to get it relative to the initital image
         for (vector< Point2f >::iterator fiducialIt = meanShape.begin() ; fiducialIt != meanShape.end() ; fiducialIt++ )
@@ -309,87 +312,9 @@ bool KazemiFaceAlignImpl::getInitialShape(Mat& image, CascadeClassifier& cascade
 return true;
 }
 
-double KazemiFaceAlignImpl::getDistance(Point2f first , Point2f second)
-{
-    return sqrt(pow((first.x - second.x),2) + pow((first.y - second.y),2));
-}
 
-splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates)
-{
-    splitFeature feature;
-    double acceptProbability;
-    RNG rnd;
-    do
-    {
-        feature.idx1 = rnd.uniform(0,numFeature);
-        feature.idx2 = rnd.uniform(0,numFeature);
-        double dist = getDistance(pixelCoordinates[feature.idx1] , pixelCoordinates[feature.idx2]);
-        acceptProbability = exp(-dist/lambda);
-    }
-    while(feature.idx1 == feature.idx2 || !(acceptProbability > rnd.uniform(0,1)));
-    feature.thresh = rnd.uniform(double(-255),double(255)); //Check Validity
-    return feature;
-}
 
-splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
-                                                unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum)
-{
-    vector<splitFeature> features;
-    for (unsigned int i = 0; i < numTestSplits; ++i)
-        features.push_back(randomSplitFeatureGenerator(pixelCoordinates));
-    vector<Point2f> leftSums;
-    vector<unsigned long> leftCount;
-    ///////--------------------SCOPE OF THREADING----------------------/////////////
-    for (unsigned long i = start; i < end ; ++i)
-    {
-        for (unsigned long j = 0; j < numTestSplits; ++j)
-        {
-            if((float)samples[i].pixelValues[features[j].idx1] - (float)samples[i].pixelValues[features[j].idx2] > features[j].thresh)
-            {
-                leftSums[j] = calcSum(leftSums[j], samples[i].residualShape);
-                ++leftCount[j];
-            }
-        }
-    }
-    ///////--------------------SCOPE OF THREADING----------------------/////////////
-    //Select the best feature
-    double bestScore = -1;
-    unsigned long bestFeature = 0;
-    Point2f tempFeature;
-    for (unsigned long i = 0; i < numTestSplits; ++i)
-    {
-        double currentScore = 0;
-        unsigned long rightCount = end - start - leftCount[i];
-        if(leftCount[i] != 0 && rightCount != 0)
-        {
-            tempFeature = sum - leftSums[i];
-            //To calculate score
-            double leftSumsDot = pow(leftSums[i].x,2) + pow(leftSums[i].y,2);
-            double tempFeatureDot = pow(tempFeature.x,2) + pow(tempFeature.y,2);
-            currentScore = leftSumsDot/leftCount[i] + tempFeatureDot/rightCount;
-            if(currentScore > bestScore)
-            {
-                bestScore = currentScore;
-                bestFeature = i;
-            }
-        }
-    }
-    //Swap the Coordinate Values
-    Point2f temp = leftSums[bestFeature];
-    leftSums[bestFeature] = leftSum;
-    leftSum = temp;
-    //leftSums[bestFeature].swap(leftSum);
-    if(leftSum.x != 0 && leftSum.y !=0)
-        rightSum = sum - leftSum;
-    else
-    {
-        rightSum = sum;
-        leftSum = Point2f(0,0);
-    }
-return features[bestFeature];
-}
-
-bool KazemiFaceAlignImpl::extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates)
+bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f> pixelCoordinates)
 {
     Mat image = sample.img;
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
@@ -400,75 +325,7 @@ bool KazemiFaceAlignImpl::extractPixelValues(trainSample &sample , vector<Point2
     return true;
 }
 
-regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
-{
-    regressionTree tree;
-    //partition queue will store the extent of leaf nodes
-    deque< pair<unsigned long, unsigned long > >  partition;
-    partition.push_back(make_pair(0, (unsigned long)samples.size()));
-    const unsigned long numSplitNodes = (unsigned long)(pow(2 , (double)getTreeDepth()) - 1);
-    const unsigned long numLeaves =
-    vector<Point2f> sums(numSplitNodes*2 + 1);
-    ////---------------------------------SCOPE OF THREADING---------------------------------------////
-    for (unsigned long i = 0; i < samples.size(); i++)
-    {
-        samples[i].residualShape = calcDiff(samples[i].targetShape , samples[i].currentShape);
-        sums = calcSum(sums,samples[i].residualShape);
-    }
-    //Iteratively generate Splits in the samples
-    for (unsigned long int i = 0; i < numSplitNodes; i++)
-    {
-        pair<unsigned long, unsigned long> rangeleaf = partition.front();
-        partition.pop_front();
-        splitFeature split = splitGenerator(samples, pixelCoordinates, rangeleaf.first, rangeleaf.second, sums[i], sums[leftChild(i)], sums[rightChild(i)]);
-        tree.split.push_back(split);
-        const unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
-        partition.push_back(make_pair(rangeleaf.first, mid));
-        partition.push_back(make_pair(mid, rangeleaf.second));
-    }
-    tree.leaves.resize(partition.size());
-    //Use partition value to calculate average value of leafs
-    for (unsigned long int i = 0; i < partition.size(); ++i)
-    {
-        unsigned long currentCount = partition[i].second - partition[i].first + 1;
-        vector<Point2f> residualSum;
-        for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-            residualSum = calcSum(residualSum, samples[j].residualShape);
-        for (unsigned long k = 0; k < residualSum.size(); ++k)
-        {
-            if(partition[i].first != partition[i].second)
-            {
-                residualSum[j].x /= currentCount;
-                residualSum[j].y /= currentCount;
-            }
-        }
-        tree.leaves[i] = residualSum;
-        for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-        {
-            for (unsigned long k = 0; k < samples[j].residualShape; ++k)
-            {
-                samples[j].residualShape[k] -= learningRate * tree.leaves[i][k];
-            }
-        }
-    }
-    return tree;
-}
-
-unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
-{
-    unsigned long initial = start;
-    for (unsigned long j = 0; j < end; j++)
-    {
-        if((float)samples[j].pixelValues[split.idx1] - (float)samples[j].pixelValues[split.idx2] > split.thresh)
-        {
-            swap(samples[initial],samples[j]);
-            initial++;
-        }
-    }
-    return initial;
-}
-
-vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current)
+vector<Point2f> calcDiff(vector<Point2f>& target, vector<Point2f>& current)
 {
     vector<Point2f> resultant;
     for (unsigned long i = 0; i < target.size(); ++i)
@@ -478,7 +335,7 @@ vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current)
     return resultant;
 }
 
-vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current)
+vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current)
 {
     vector<Point2f> resultant;
     for (unsigned long i = 0; i < target.size(); ++i)
@@ -488,28 +345,50 @@ vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current)
     return resultant;
 }
 
-vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+bool calcMeanShapeBounds()
 {
-    //for cascade of regressrs
-    vector<regressionTree> forest;
-    for (unsigned long i = 0; i < numTreesperCascade; ++i)
+    double meanShapeRectminx, meanShapeRectminy, meanShapeRectmaxx, meanShapeRectmaxy;
+    double meanX[meanShape.size()] , meanY[meanShape.size()];
+    int pointcount=0;
+    for (vector<Point2f>::iterator it = meanShape.begin(); it != meanShape.end(); ++it)
     {
-        regressionTree tree = buildRegressionTree(samples,pixelCoordinates);
-        forest.push_back(tree);
+        meanX[pointcount] = (*it).x;
+        meanY[pointcount] = (*it).y;
+        pointcount++;
     }
-    for (unsigned long i = 0; i < samples.size(); i++)
-    {
-       samples[i].currentShape = calcDiff(samples[i].targetShape, samples[i].residualShape);
-    }
-    return forest;
+    meanShapeRectminx = *min_element(meanX , meanX + meanShape.size());
+    meanShapeRectmaxx = *max_element(meanX , meanX + meanShape.size());
+    meanShapeRectminy = *min_element(meanY , meanY + meanShape.size());
+    meanShapeRectmaxy = *max_element(meanY , meanY + meanShape.size());
+    meanShapeBounds.push_back(Point2f(meanShapeRectminx, meanShapeRectminy));
+    meanShapeBounds.push_back(Point2f(meanShapeRectmaxx, meanShapeRectmaxy));
+    MeanShapeRefrencePoints[0] = Point2f(meanShapeRectminx, meanShapeRectminy);
+    MeanShapeRefrencePoints[1] = Point2f(meanShapeRectmaxx, meanShapeRectminy);
+    MeanShapeRefrencePoints[2] = Point2f(meanShapeRectminx, meanShapeRectmaxy);
+    return true;
 }
 
-bool KazemiFaceAlignImpl::trainCascade()
+vector<Point2f> KazemiFaceAlignImpl::getRelativeShape(trainSample& sample, vector<Point2f>& landmarks)
 {
-    vector<trainingSample> samples;
-    vector< vector<Point2f> > pixelCoordinates;
-    fillData(samples,pixelCoordinates);
-    return true;
+    for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
+    {
+        Point2f currentPoints[3];
+        currentPoints[0] = Point2f(sample.rect[facenum].x,sample.rect[facenum].y);
+        currentPoints[1] = Point2f((sample.rect[facenum].x + sample.rect[facenum].width),sample.rect[facenum].y);
+        currentPoints[2] = Point2f(sample.rect[facenum].x , (sample.rect[facenum].y + sample.rect[facenum].height));
+        Mat affineMatrix = getAffineTransform( MeanShapeRefrencePoints, currentPoints);
+        vector<Point2f> intermediate;
+        //Transform each fiducial Point to get it relative to the initital image
+        for (vector< Point2f >::iterator fiducialIt = landmarks.begin() ; fiducialIt != landmarks.end() ; fiducialIt++ )
+        {
+            Mat fiducialPointMatrix = (Mat_<double>(3,1) << (*fiducialIt).x, (*fiducialIt).y , 1);
+            Mat resultAffineMatrix = (Mat_<double>(3,1)<<0,0,1);
+            resultAffineMatrix = affineMatrix*fiducialPointMatrix;
+            //warpAffine(fiducialPointMatrix , resultAffineMatrix, affineMatrix, resultAffineMatrix.size()); // not working
+            intermediate.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
+        }
+    }
+    return intermediate;
 }
 
 }

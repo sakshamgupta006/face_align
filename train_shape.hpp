@@ -152,13 +152,25 @@ class KazemiFaceAlignImpl
         //@
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
         //@
-        unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end);
+        unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples,
+                                        unsigned long start, unsigned long end);
         //@Intitiates the training of Cascade
-        bool trainCascade();
+        bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade);
+        //@
+        bool calcMeanShapeBounds();
+        //@
+        vector<Point2f> getRelativeShape(trainSample& sample, vector<Point2f>& landmarks);
+        //@
+        bool fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
+                       string path_prefix, CascadeClassifier& cascade);
+        //@
+        bool generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates);
     private:
         int numFaces;
         int numLandmarks;
         vector<Point2f> meanShape;
+        vector<Point2f> meanShapeBounds;
+        unsigned int meanShapeReference[3];
         vector< vector<Point2f> > initialShape;
         unsigned int cascadeDepth;
         unsigned int treeDepth;

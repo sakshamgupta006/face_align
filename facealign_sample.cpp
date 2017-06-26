@@ -36,7 +36,7 @@ int main(int argc, const char** argv )
         vector<cv::String> names;
         std::map<string, vector<Point2f>> landmarks;
         path_prefix = "/home/cooper/gsoc/opencv/modules/objdetect/src/data/train/";    // need to be passed as arguments
-        KazemiFaceAlign train;
+        KazemiFaceAlignImpl train;
         train.readAnnotationList(names, path_prefix);
         train.readtxt(names, landmarks,path_prefix);
         train.readMeanShape();
