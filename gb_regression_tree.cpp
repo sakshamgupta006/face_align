@@ -34,7 +34,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
 }
 
 splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
-                                                unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum)
+                                                unsigned long end,const vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum )
 {
     vector<splitFeature> features;
     for (unsigned int i = 0; i < numTestSplits; ++i)
@@ -57,14 +57,14 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     //Select the best feature
     double bestScore = -1;
     unsigned long bestFeature = 0;
-    Point2f tempFeature;
+    vector<Point2f> tempFeatureCoordinates;
     for (unsigned long i = 0; i < numTestSplits; ++i)
     {
         double currentScore = 0;
         unsigned long rightCount = end - start - leftCount[i];
         if(leftCount[i] != 0 && rightCount != 0)
         {
-            tempFeature = sum - leftSums[i];
+            tempFeature = calcDiff(sum, leftSums[i]);
             //To calculate score
             double leftSumsDot = pow(leftSums[i].x,2) + pow(leftSums[i].y,2);
             double tempFeatureDot = pow(tempFeature.x,2) + pow(tempFeature.y,2);
@@ -77,33 +77,34 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
         }
     }
     //Swap the Coordinate Values
-    Point2f temp = leftSums[bestFeature];
+    vector<Point2f> temp = leftSums[bestFeature];
     leftSums[bestFeature] = leftSum;
     leftSum = temp;
     //leftSums[bestFeature].swap(leftSum);
     if(leftSum.x != 0 && leftSum.y !=0)
-        rightSum = sum - leftSum;
+        rightSum = calcDiff(sum, leftSum);
     else
     {
         rightSum = sum;
-        leftSum = Point2f(0,0);
+        leftSum.assign(sum.size(), Point2f(0,0));
+        //leftSum = (sum.size(),Point2f(0,0));
     }
 return features[bestFeature];
 }
 
-regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates)
 {
     regressionTree tree;
     //partition queue will store the extent of leaf nodes
     deque< pair<unsigned long, unsigned long > >  partition;
     partition.push_back(make_pair(0, (unsigned long)samples.size()));
     const unsigned long numSplitNodes = (unsigned long)(pow(2 , (double)getTreeDepth()) - 1);
-    vector<Point2f> sums(numSplitNodes*2 + 1);
+    vector< vector<Point2f> >sums(numSplitNodes*2 + 1);
     ////---------------------------------SCOPE OF THREADING---------------------------------------////
+    //Initialize Sum for the root node
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-        samples[i].residualShape = calcDiff(samples[i].targetShape , samples[i].currentShape);
-        sums = calcSum(sums,samples[i].residualShape);
+        sums[0] = calcSum(sums[0],samples[i].residualShape);
     }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
@@ -116,28 +117,46 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         partition.push_back(make_pair(rangeleaf.first, mid));
         partition.push_back(make_pair(mid, rangeleaf.second));
     }
+    //following Dlib's approach
+    vector<Point2f> residualSum(samples[0].targetShape.size());
     tree.leaves.resize(partition.size());
     //Use partition value to calculate average value of leafs
     for (unsigned long int i = 0; i < partition.size(); ++i)
     {
         unsigned long currentCount = partition[i].second - partition[i].first + 1;
-        vector<Point2f> residualSum;
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
             residualSum = calcSum(residualSum, samples[j].residualShape);
+        //Calculate Reciprocal
         for (unsigned long k = 0; k < residualSum.size(); ++k)
         {
-            if(partition[i].first != partition[i].second)
-            {
-                residualSum[j].x /= currentCount;
-                residualSum[j].y /= currentCount;
-            }
+            if(residualSum[k].x != 0)
+                residualSum[k].x  = 1 / residualSum[k].x;
+            else
+                residualSum[k].x = 0;
+            if(residualSum[k].y != 0)
+                residualSum[k].y = 1 / residualSum[k].y;
+            else
+                residualSum[k].y = 0;
         }
-        tree.leaves[i] = residualSum;
+        //End Reciprocal
+        if(partition[i].first != partition[i].second)
+            {
+                tree.leaves[i] = calcMul(residualSum,sums[numSplitNodes]);
+                for (unsigned long l = 0; l < residualSum.size(); ++l)
+                {
+                    tree.leaves[i][l] = learningRate * tree.leaves[i][l];
+                }
+            }
+        else
+            tree.leaves[i].assign(residualSum, Point2f(0,0));
+
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
         {
-            for (unsigned long k = 0; k < samples[j].residualShape; ++k)
+            samples[j].currentShape = calcSum(samples[j].currentShape, tree.leaves[i]);
+            for (unsigned long m = 0; m < samples[j].residualShape.size(); ++m)
             {
-                samples[j].residualShape[k] -= learningRate * tree.leaves[i][k];
+                if(samples[j].residualShape[m] == 0)
+                    samples[j].targetShape[m] = samples[j].currentShape[m];
             }
         }
     }

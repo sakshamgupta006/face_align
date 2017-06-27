@@ -20,7 +20,7 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
     vector< vector<regressionTree> > forest;
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
-        forest.push_back(gradientBoosting(samples, pixelCoordinates));
+        forest.push_back(gradientBoosting(samples, pixelCoordinates[i]));
         cout<<"Fitted "<<i<<"th regressor"<<endl;
     }
     return true;
@@ -61,7 +61,7 @@ bool KazemiFaceAlignImpl::generateTestCoordinates(vector< vector<Point2f> >& pix
         {
             testCoordinates.push_back(Point2f((float)rng.uniform(meanShapeBounds[0].x, meanShapeBounds[1].x), (float)rng.uniform(meanShapeBounds[0].y,meanShapeBounds[1].y)));
         }
-        pixel_coordinates.push_back(testCoordinates);
+        pixelCoordinates.push_back(testCoordinates);
     }
     return true;
 }

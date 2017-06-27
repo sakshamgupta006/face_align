@@ -314,7 +314,7 @@ return true;
 
 
 
-bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f> pixelCoordinates)
+bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f>& pixelCoordinates)
 {
     Mat image = sample.img;
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
@@ -345,7 +345,19 @@ vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current)
     return resultant;
 }
 
-bool calcMeanShapeBounds()
+vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current)
+{
+
+    vector<Point2f> resultant;
+    for (unsigned long i = 0; i < target.size(); ++i)
+    {
+        resultant[i].x = target[i].x * current[i].x;
+        resultant[i].y = target[i].y * current[i].y;
+    }
+    return resultant;
+}
+
+bool KazemiFaceAlignImpl::calcMeanShapeBounds()
 {
     double meanShapeRectminx, meanShapeRectminy, meanShapeRectmaxx, meanShapeRectmaxy;
     double meanX[meanShape.size()] , meanY[meanShape.size()];
@@ -362,21 +374,22 @@ bool calcMeanShapeBounds()
     meanShapeRectmaxy = *max_element(meanY , meanY + meanShape.size());
     meanShapeBounds.push_back(Point2f(meanShapeRectminx, meanShapeRectminy));
     meanShapeBounds.push_back(Point2f(meanShapeRectmaxx, meanShapeRectmaxy));
-    MeanShapeRefrencePoints[0] = Point2f(meanShapeRectminx, meanShapeRectminy);
-    MeanShapeRefrencePoints[1] = Point2f(meanShapeRectmaxx, meanShapeRectminy);
-    MeanShapeRefrencePoints[2] = Point2f(meanShapeRectminx, meanShapeRectmaxy);
+    meanShapeReferencePoints[0] = Point2f(meanShapeRectminx, meanShapeRectminy);
+    meanShapeReferencePoints[1] = Point2f(meanShapeRectmaxx, meanShapeRectminy);
+    meanShapeReferencePoints[2] = Point2f(meanShapeRectminx, meanShapeRectmaxy);
     return true;
 }
 
-vector<Point2f> KazemiFaceAlignImpl::getRelativeShape(trainSample& sample, vector<Point2f>& landmarks)
+vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks)
 {
+    vector<Point2f> intermediate;
     for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
     {
         Point2f currentPoints[3];
         currentPoints[0] = Point2f(sample.rect[facenum].x,sample.rect[facenum].y);
         currentPoints[1] = Point2f((sample.rect[facenum].x + sample.rect[facenum].width),sample.rect[facenum].y);
         currentPoints[2] = Point2f(sample.rect[facenum].x , (sample.rect[facenum].y + sample.rect[facenum].height));
-        Mat affineMatrix = getAffineTransform( MeanShapeRefrencePoints, currentPoints);
+        Mat affineMatrix = getAffineTransform( meanShapeReferencePoints, currentPoints);
         vector<Point2f> intermediate;
         //Transform each fiducial Point to get it relative to the initital image
         for (vector< Point2f >::iterator fiducialIt = landmarks.begin() ; fiducialIt != landmarks.end() ; fiducialIt++ )

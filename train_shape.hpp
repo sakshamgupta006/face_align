@@ -87,7 +87,7 @@ class KazemiFaceAlignImpl
 {
     public:
         //KazemiFaceAlignImpl();
-        virtual ~KazemiFaceAlignImpl();
+        //virtual ~KazemiFaceAlignImpl();
         //*@Returns number of faces detected in the image */
         int getFacesNum() const {return numFaces;}
         // /*@Returns number of landmarks to be considered */
@@ -118,12 +118,16 @@ class KazemiFaceAlignImpl
         bool getInitialShape(Mat& image, CascadeClassifier& cascade);
         //@ Reads MeanShape into a vector
         bool readMeanShape();
+        //@
+        bool calcMeanShapeBounds();
         //@ Calculate distance between given pixel co-ordinates
         double getDistance(Point2f first , Point2f second);
         //@ Calculate different between the annotations
-        vector<Point2f> calcDiff(vector<Point2f> target, vector<Point2f> current);
+        vector<Point2f> calcDiff(vector<Point2f>& target, vector<Point2f>& current);
         //A Calculate Sum of annotation vectors
-        vector<Point2f> calcSum(vector<Point2f> target, vector<Point2f> current);
+        vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current);
+        //@
+        vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current);
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
@@ -133,7 +137,7 @@ class KazemiFaceAlignImpl
             cascadeDepth = 10;
             treeDepth = 4;
             numTreesperCascade = 500;
-            nu = 0.1;
+            learningRate = 0.1;
             oversamplingAmount = 20;
             feature_pool_size = 400;
             lambda = 0.1;
@@ -148,7 +152,7 @@ class KazemiFaceAlignImpl
         splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
                                     unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum);
         //@
-        bool extractPixelValues(trainSample &sample , vector<Point2f> pixelCoordinates);
+        bool extractPixelValues(trainSample &sample ,vector<Point2f>& pixelCoordinates);
         //@
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
         //@
@@ -157,9 +161,7 @@ class KazemiFaceAlignImpl
         //@Intitiates the training of Cascade
         bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade);
         //@
-        bool calcMeanShapeBounds();
-        //@
-        vector<Point2f> getRelativeShape(trainSample& sample, vector<Point2f>& landmarks);
+        vector<Point2f> getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
         //@
         bool fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
                        string path_prefix, CascadeClassifier& cascade);
@@ -170,12 +172,12 @@ class KazemiFaceAlignImpl
         int numLandmarks;
         vector<Point2f> meanShape;
         vector<Point2f> meanShapeBounds;
-        unsigned int meanShapeReference[3];
+        Point2f meanShapeReferencePoints[3];
         vector< vector<Point2f> > initialShape;
         unsigned int cascadeDepth;
         unsigned int treeDepth;
         unsigned int numTreesperCascade;
-        float nu;
+        float learningRate;
         unsigned long oversamplingAmount;
         unsigned int feature_pool_size;
         float lambda;
