@@ -154,7 +154,9 @@ class KazemiFaceAlignImpl
         //@
         bool extractPixelValues(trainSample &sample ,vector<Point2f>& pixelCoordinates);
         //@
-        regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f> pixelCoordinates);
+        regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates);
+        //@
+        vector<regressionTree> gradientBoosting(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates);
         //@
         unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples,
                                         unsigned long start, unsigned long end);

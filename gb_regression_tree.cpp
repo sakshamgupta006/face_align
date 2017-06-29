@@ -71,10 +71,10 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
             Point2f leftSumsDot(0,0), tempFeatureDot(0,0);
             for (unsigned long dotit = 0; dotit < leftSums.size(); ++dotit)
             {
-                leftSumsDot.x += (double)(leftSums[i][dotit].x * leftSums[i][doit].x);
-                leftSumsDot.y += (double)(leftSums[i][dotit].y * leftSums[i][doit].y);
-                tempFeatureDot.x += (double)(tempFeature[i][dotit].x * tempFeature[i][dotit].x);
-                tempFeatureDot.y += (double)(tempFeature[i][dotit].y * tempFeature[i][dotit].y); 
+                leftSumsDot.x += (double)(leftSums[i][dotit].x * leftSums[i][dotit].x);
+                leftSumsDot.y += (double)(leftSums[i][dotit].y * leftSums[i][dotit].y);
+                tempFeatureDot.x += (double)(tempFeature[dotit].x * tempFeature[dotit].x);
+                tempFeatureDot.y += (double)(tempFeature[dotit].y * tempFeature[dotit].y); 
             }
             double leftSumsDotRes = sqrt(pow(leftSumsDot.x, 2) + pow(leftSumsDot.y, 2));
             double tempFeatureDotRes = sqrt(pow(tempFeatureDot.x, 2) + pow(tempFeatureDot.y, 2));          
@@ -91,7 +91,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     leftSums[bestFeature] = leftSum;
     leftSum = temp;
     //leftSums[bestFeature].swap(leftSum);
-    if(leftSum.x != 0 && leftSum.y !=0)
+    if(leftSum.size() != 0)
         rightSum = calcDiff(sum, leftSum);
     else
     {
@@ -158,14 +158,14 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
                 }
             }
         else
-            tree.leaves[i].assign(residualSum, Point2f(0,0));
+            tree.leaves[i].assign(residualSum.size(), Point2f(0,0));
 
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
         {
             samples[j].currentShape = calcSum(samples[j].currentShape, tree.leaves[i]);
             for (unsigned long m = 0; m < samples[j].residualShape.size(); ++m)
             {
-                if(samples[j].residualShape[m] == 0)
+                if(samples[j].residualShape[m].x == 0 &&  samples[j].residualShape[m].y == 0)
                     samples[j].targetShape[m] = samples[j].currentShape[m];
             }
         }
@@ -173,7 +173,7 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     return tree;
 }
 
-vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>& samples, vector<Point2f> pixelCoordinates)
+vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates)
 {
     //for cascade of regressrs
     vector<regressionTree> forest;
