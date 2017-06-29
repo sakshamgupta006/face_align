@@ -150,7 +150,7 @@ class KazemiFaceAlignImpl
         splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
         //@
         splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
-                                    unsigned long end,const Point2f& sum, Point2f& leftSum, Point2f& rightSum);
+                                    unsigned long end, vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum);
         //@
         bool extractPixelValues(trainSample &sample ,vector<Point2f>& pixelCoordinates);
         //@

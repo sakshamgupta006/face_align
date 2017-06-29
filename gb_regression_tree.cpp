@@ -34,7 +34,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
 }
 
 splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
-                                                unsigned long end,const vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum )
+                                                unsigned long end, vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum )
 {
     vector<splitFeature> features;
     for (unsigned int i = 0; i < numTestSplits; ++i)
@@ -57,7 +57,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     //Select the best feature
     double bestScore = -1;
     unsigned long bestFeature = 0;
-    vector<Point2f> tempFeatureCoordinates;
+    vector<Point2f> tempFeature;
     for (unsigned long i = 0; i < numTestSplits; ++i)
     {
         double currentScore = 0;
@@ -66,9 +66,19 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
         {
             tempFeature = calcDiff(sum, leftSums[i]);
             //To calculate score
-            double leftSumsDot = pow(leftSums[i].x,2) + pow(leftSums[i].y,2);
-            double tempFeatureDot = pow(tempFeature.x,2) + pow(tempFeature.y,2);
-            currentScore = leftSumsDot/leftCount[i] + tempFeatureDot/rightCount;
+            // double leftSumsDot = cv:dot(leftSums[i]);//pow(leftSums[i].x,2) + pow(leftSums[i].y,2);
+            // double tempFeatureDot = cv::dot(tempFeature);//pow(tempFeature.x,2) + pow(tempFeature.y,2);
+            Point2f leftSumsDot(0,0), tempFeatureDot(0,0);
+            for (unsigned long dotit = 0; dotit < leftSums.size(); ++dotit)
+            {
+                leftSumsDot.x += (double)(leftSums[i][dotit].x * leftSums[i][doit].x);
+                leftSumsDot.y += (double)(leftSums[i][dotit].y * leftSums[i][doit].y);
+                tempFeatureDot.x += (double)(tempFeature[i][dotit].x * tempFeature[i][dotit].x);
+                tempFeatureDot.y += (double)(tempFeature[i][dotit].y * tempFeature[i][dotit].y); 
+            }
+            double leftSumsDotRes = sqrt(pow(leftSumsDot.x, 2) + pow(leftSumsDot.y, 2));
+            double tempFeatureDotRes = sqrt(pow(tempFeatureDot.x, 2) + pow(tempFeatureDot.y, 2));          
+            currentScore = leftSumsDotRes/leftCount[i] + tempFeatureDotRes/rightCount;
             if(currentScore > bestScore)
             {
                 bestScore = currentScore;
