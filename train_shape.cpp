@@ -40,7 +40,6 @@
 //M*/
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
-#include "../include/opencv2/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "train_shape.hpp"
@@ -76,12 +75,12 @@ void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
     treeDepth = newdepth;
 }
 
-unsigned long leftChild(unsigned long idx)
+unsigned long KazemiFaceAlignImpl::leftChild(unsigned long idx)
 {
     return 2*idx + 1;
 }
 
-unsigned long rightChild(unsigned long idx)
+unsigned long KazemiFaceAlignImpl::rightChild(unsigned long idx)
 {
     return 2*idx + 2;
 }
@@ -143,6 +142,7 @@ bool KazemiFaceAlignImpl::readMeanShape()
         meanShape.push_back(Point2f((float)atof(location[0].c_str()),(float)atof(location[1].c_str())));
     }
     calcMeanShapeBounds();
+    cout<<"MeanShape Loaded and Bounds calculated"<<endl;
     return true;
 }
 
@@ -155,21 +155,21 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
     cascade.detectMultiScale( gray, faces,
-        1.1, 2, 0
+        1.1, 3, 0
         //|CASCADE_FIND_BIGGEST_OBJECT,
         //|CASCADE_DO_ROUGH_SEARCH
         |CASCADE_SCALE_IMAGE,
         Size(30, 30) );
     numFaces = faces.size();
-    for ( size_t i = 0; i < faces.size(); i++ )
-    {
-        Rect r = faces[i];
-        Scalar color = Scalar(255,0,0);
-        double aspect_ratio = (double)r.width/r.height;
-        rectangle( image, cvPoint(cvRound(r.x*scale), cvRound(r.y*scale)),
-                       cvPoint(cvRound((r.x + r.width-1)*scale), cvRound((r.y + r.height-1)*scale)),
-                       color, 3, 8, 0);
-    }
+    // for ( size_t i = 0; i < faces.size(); i++ )
+    // {
+    //     Rect r = faces[i];
+    //     Scalar color = Scalar(255,0,0);
+    //     double aspect_ratio = (double)r.width/r.height;
+    //     rectangle( image, cvPoint(cvRound(r.x*scale), cvRound(r.y*scale)),
+    //                    cvPoint(cvRound((r.x + r.width-1)*scale), cvRound((r.y + r.height-1)*scale)),
+    //                    color, 3, 8, 0);
+    // }
     return faces;
 }
 
@@ -317,17 +317,20 @@ return true;
 bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f>& pixelCoordinates)
 {
     Mat image = sample.img;
+    sample.pixelValues.resize(pixelCoordinates.size());
+    cvtColor(image,image,COLOR_BGR2GRAY);
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
     {
-        cvtColor(image,image,COLOR_BGR2GRAY);
-        sample.pixelValues.push_back(image.at<double>(pixelCoordinates[i]));
+        if(pixelCoordinates[i].x < image.rows && pixelCoordinates[i].y < image.cols)
+            sample.pixelValues[i] = (int)image.at<uchar>(pixelCoordinates[i].x, pixelCoordinates[i].y);
     }
     return true;
 }
 
-vector<Point2f> calcDiff(vector<Point2f>& target, vector<Point2f>& current)
+vector<Point2f> KazemiFaceAlignImpl::calcDiff(vector<Point2f>& target, vector<Point2f>& current)
 {
     vector<Point2f> resultant;
+    resultant.resize(target.size());
     for (unsigned long i = 0; i < target.size(); ++i)
     {
         resultant[i] = target[i] - current[i];
@@ -335,9 +338,10 @@ vector<Point2f> calcDiff(vector<Point2f>& target, vector<Point2f>& current)
     return resultant;
 }
 
-vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current)
+vector<Point2f> KazemiFaceAlignImpl::calcSum(vector<Point2f>& target, vector<Point2f>& current)
 {
     vector<Point2f> resultant;
+    resultant.resize(current.size());
     for (unsigned long i = 0; i < target.size(); ++i)
     {
         resultant[i] = target[i] + current[i];
@@ -345,10 +349,11 @@ vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current)
     return resultant;
 }
 
-vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current)
+vector<Point2f> KazemiFaceAlignImpl::calcMul(vector<Point2f>& target, vector<Point2f>& current)
 {
 
     vector<Point2f> resultant;
+    resultant.resize(target.size());
     for (unsigned long i = 0; i < target.size(); ++i)
     {
         resultant[i].x = target[i].x * current[i].x;
@@ -383,6 +388,7 @@ bool KazemiFaceAlignImpl::calcMeanShapeBounds()
 vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks)
 {
     vector<Point2f> intermediate;
+    intermediate.resize(landmarks.size());
     for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
     {
         Point2f currentPoints[3];
@@ -391,13 +397,13 @@ vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sampl
         currentPoints[2] = Point2f(sample.rect[facenum].x , (sample.rect[facenum].y + sample.rect[facenum].height));
         Mat affineMatrix = getAffineTransform( meanShapeReferencePoints, currentPoints);
         vector<Point2f> intermediate;
+        int counter = 0;
         //Transform each fiducial Point to get it relative to the initital image
         for (vector< Point2f >::iterator fiducialIt = landmarks.begin() ; fiducialIt != landmarks.end() ; fiducialIt++ )
         {
             Mat fiducialPointMatrix = (Mat_<double>(3,1) << (*fiducialIt).x, (*fiducialIt).y , 1);
             Mat resultAffineMatrix = (Mat_<double>(3,1)<<0,0,1);
             resultAffineMatrix = affineMatrix*fiducialPointMatrix;
-            //warpAffine(fiducialPointMatrix , resultAffineMatrix, affineMatrix, resultAffineMatrix.size()); // not working
             intermediate.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
         }
     }

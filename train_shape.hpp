@@ -136,16 +136,15 @@ class KazemiFaceAlignImpl
             numLandmarks = 194;
             cascadeDepth = 10;
             treeDepth = 4;
-            numTreesperCascade = 500;
+            numTreesperCascade = 50;
             learningRate = 0.1;
-            oversamplingAmount = 20;
+            oversamplingAmount = 2;
             feature_pool_size = 400;
+            numTestCoordinates = 400;
             lambda = 0.1;
             numTestSplits = 20;
             numFeature = 400;
         }
-
-    protected:
         //@ Randomly Generates splits given a set of pixel co-ordinates
         splitFeature randomSplitFeatureGenerator(vector<Point2f>& pixelCoordinates);
         //@
@@ -168,6 +167,9 @@ class KazemiFaceAlignImpl
         bool fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
                        string path_prefix, CascadeClassifier& cascade);
         //@
+        unsigned int findNearestLandmark(Point2f& pixelValue);
+        bool calcRelativePixels(vector<Point2f>& sample,vector<Point2f>& pixel_coordinates);
+        //@
         bool generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates);
     private:
         int numFaces;
@@ -184,6 +186,7 @@ class KazemiFaceAlignImpl
         unsigned int feature_pool_size;
         float lambda;
         unsigned int numTestSplits;
+        unsigned int numTestCoordinates;
         int numFeature;
 };
 }

@@ -1,3 +1,43 @@
+/*M///////////////////////////////////////////////////////////////////////////////////////
+//
+//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
+//
+//  By downloading, copying, installing or using the software you agree to this license.
+//  If you do not agree to this license, do not download, install,
+//  copy or use the software.
+//
+//
+//                           License Agreement
+//                For Open Source Computer Vision Library
+//
+// Copyright (C) 2008-2013, Itseez Inc., all rights reserved.
+// Third party copyrights are property of their respective owners.
+//
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+//
+//   * Redistribution's of source code must retain the above copyright notice,
+//     this list of conditions and the following disclaimer.
+//
+//   * Redistribution's in binary form must reproduce the above copyright notice,
+//     this list of conditions and the following disclaimer in the documentation
+//     and/or other materials provided with the distribution.
+//
+//   * The name of Itseez Inc. may not be used to endorse or promote products
+//     derived from this software without specific prior written permission.
+//
+// This software is provided by the copyright holders and contributors "as is" and
+// any express or implied warranties, including, but not limited to, the implied
+// warranties of merchantability and fitness for a particular purpose are disclaimed.
+// In no event shall the copyright holders or contributors be liable for any direct,
+// indirect, incidental, special, exemplary, or consequential damages
+// (including, but not limited to, procurement of substitute goods or services;
+// loss of use, data, or profits; or business interruption) however caused
+// and on any theory of liability, whether in contract, strict liability,
+// or tort (including negligence or otherwise) arising in any way out of
+// the use of this software, even if advised of the possibility of such damage.
+//
+//M*/
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
 #include "../include/opencv2/objdetect.hpp"
@@ -20,7 +60,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
 {
     splitFeature feature;
     double acceptProbability;
-    RNG rnd;
+    RNG rnd((int)time(0));
     do
     {
         feature.idx1 = rnd.uniform(0,numFeature);
@@ -40,7 +80,9 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     for (unsigned int i = 0; i < numTestSplits; ++i)
         features.push_back(randomSplitFeatureGenerator(pixelCoordinates));
     vector< vector<Point2f> > leftSums;
+    leftSums.resize(numTestSplits);
     vector<unsigned long> leftCount;
+    leftCount.resize(numTestSplits);
     ///////--------------------SCOPE OF THREADING----------------------/////////////
     for (unsigned long i = start; i < end ; ++i)
     {
@@ -49,7 +91,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
             if((float)samples[i].pixelValues[features[j].idx1] - (float)samples[i].pixelValues[features[j].idx2] > features[j].thresh)
             {
                 leftSums[j] = calcSum(leftSums[j], samples[i].residualShape);
-                ++leftCount[j];
+                leftCount[j] += 1;
             }
         }
     }
@@ -74,10 +116,10 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
                 leftSumsDot.x += (double)(leftSums[i][dotit].x * leftSums[i][dotit].x);
                 leftSumsDot.y += (double)(leftSums[i][dotit].y * leftSums[i][dotit].y);
                 tempFeatureDot.x += (double)(tempFeature[dotit].x * tempFeature[dotit].x);
-                tempFeatureDot.y += (double)(tempFeature[dotit].y * tempFeature[dotit].y); 
+                tempFeatureDot.y += (double)(tempFeature[dotit].y * tempFeature[dotit].y);
             }
             double leftSumsDotRes = sqrt(pow(leftSumsDot.x, 2) + pow(leftSumsDot.y, 2));
-            double tempFeatureDotRes = sqrt(pow(tempFeatureDot.x, 2) + pow(tempFeatureDot.y, 2));          
+            double tempFeatureDotRes = sqrt(pow(tempFeatureDot.x, 2) + pow(tempFeatureDot.y, 2));
             currentScore = leftSumsDotRes/leftCount[i] + tempFeatureDotRes/rightCount;
             if(currentScore > bestScore)
             {
@@ -192,7 +234,7 @@ vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>
 unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<trainSample>& samples, unsigned long start, unsigned long end)
 {
     unsigned long initial = start;
-    for (unsigned long j = 0; j < end; j++)
+    for (unsigned long j = start; j < end; j++)
     {
         if((float)samples[j].pixelValues[split.idx1] - (float)samples[j].pixelValues[split.idx2] > split.thresh)
         {

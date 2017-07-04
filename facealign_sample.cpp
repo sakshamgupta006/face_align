@@ -7,7 +7,7 @@
 #include <opencv2/core.hpp>
 #include <string>
 #include <bits/stdc++.h>
-#include "/home/cooper/gsoc/opencv/modules/objdetect/src/train_shape.hpp"
+#include "train_shape.hpp"
 
 using namespace std;
 using namespace cv;
@@ -39,10 +39,11 @@ int main(int argc, const char** argv )
         KazemiFaceAlignImpl train;
         train.readAnnotationList(names, path_prefix);
         train.readtxt(names, landmarks,path_prefix);
-        train.readMeanShape();
-        Mat image = imread("/home/cooper/gsoc/selfie.jpg");
-        imshow("initial image",image);
-        train.getInitialShape(image, cascade);
-        //train.extractMeanShape(landmarks, path_prefix,cascade);
+        //Mat image = imread("/home/cooper/gsoc/selfie.jpg");
+        // imshow("initial image",image);
+        // train.getInitialShape(image, cascade);
+        // //train.extractMeanShape(landmarks, path_prefix,cascade);
+        train.trainCascade(landmarks, path_prefix, cascade);
+        cout<<"Training Complete"<<endl;
 return 0;
 }
