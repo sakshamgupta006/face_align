@@ -43,7 +43,6 @@
 
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
-#include "../include/opencv2/objdetect.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -128,6 +127,11 @@ class KazemiFaceAlignImpl
         vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current);
         //@
         vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current);
+        //XML file writing functions
+        void writeSplit( FileStorage& fs, vector<splitFeature>& split);
+        void writeLeaf( FileStorage& fs, vector< vector<Point2f> >& leaves);
+        void writeTree( FileStorage& fs, regressionTree& tree, unsigned long treeNo);
+        void writeCascade( FileStorage& fs, vector<regressionTree>& forest, unsigned long cascadeDepth);
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
@@ -138,7 +142,7 @@ class KazemiFaceAlignImpl
             treeDepth = 4;
             numTreesperCascade = 50;
             learningRate = 0.1;
-            oversamplingAmount = 2;
+            oversamplingAmount = 20;
             feature_pool_size = 400;
             numTestCoordinates = 400;
             lambda = 0.1;

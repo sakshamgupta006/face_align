@@ -56,7 +56,12 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
     vector< vector<Point2f> > pixelCoordinates;
     generateTestCoordinates(pixelCoordinates);
     fillData(samples, landmarks, path_prefix, cascade);
-    cout<<"Data Filled"<<endl;
+    FileStorage fs("194_Face_Align_Landmarks_Cascade.xml", FileStorage::WRITE);
+    if (!fs.isOpened())
+    {
+        cerr << "Cannot open xml to save the model"<< endl;
+        return false;
+    }
     vector< vector<regressionTree> > cascadeFinal;
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
@@ -67,9 +72,12 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
             calcRelativePixels(samples[j].currentShape,pixrel);
             extractPixelValues(samples[j],pixrel);
         }
-        cascadeFinal.push_back(gradientBoosting(samples, pixelCoordinates[i]));
-        cout<<"Fitted "<<i<<"th regressor"<<endl;
+        vector<regressionTree> forest = gradientBoosting(samples, pixelCoordinates[i]);
+        cascadeFinal.push_back(forest);
+        cout<<"Fitted "<< i + 1 <<"th regressor"<<endl;
+        writeCascade(fs,forest,(i+1));
     }
+    fs.release();
     return true;
 }
 
@@ -77,16 +85,15 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
 bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
                                     string path_prefix, CascadeClassifier& cascade)
 {
-    RNG number;
     unsigned long currentCount =0;
-    samples.resize(101*oversamplingAmount);
+    samples.resize(6*oversamplingAmount);
     for (unsigned long i = 0; i < oversamplingAmount; ++i)
     {
         int db = 0;
         for (map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
             dbIterator != landmarks.end(); ++dbIterator)
         {
-            if(db > 100)
+            if(db > 5)
                 break;
             if(db == 0)
                 {
@@ -100,6 +107,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string,
             else
                 {
                     //Assign some random image from the training sample as current shape
+                    RNG number(getTickCount());
                     unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
                     samples[currentCount].img = getImage(dbIterator->first,path_prefix);
                     samples[currentCount].rect = faceDetector(samples[currentCount].img, cascade);
@@ -187,6 +195,53 @@ bool KazemiFaceAlignImpl::calcRelativePixels(vector<Point2f>& sample,vector<Poin
         pixelCoordinates[i]=pt+sample[in];
     }
     return true;
+}
+
+void KazemiFaceAlignImpl::writeSplit(FileStorage& fs, vector<splitFeature>& split)
+{
+    for(unsigned long i = 0; i<split.size();i++)
+    {
+        fs << "splitFeature" << "{";
+        fs << "index1" << int(split[i].idx1);
+        fs << "index2" << int(split[i].idx2);
+        fs << "thresh" << int(split[i].thresh);
+        fs << "}";
+    }
+}
+
+void KazemiFaceAlignImpl::writeLeaf( FileStorage& fs, vector< vector<Point2f> >& leaves)
+{
+    for (unsigned long j = 0; j < leaves.size(); ++j)
+    {
+        fs << "leaf" << "{";
+        for(unsigned long i = 0 ; i < leaves[j].size() ; i++)
+        {
+            string attributeX = "x" + to_string(i);
+            fs << attributeX << leaves[j][i].x;
+            string attributeY = "y" + to_string(i);
+            fs << attributeY << leaves[j][i].y;
+        }
+        fs << "}";
+    }
+}
+
+void KazemiFaceAlignImpl::writeTree( FileStorage& fs, regressionTree& tree,unsigned long treeNo)
+{
+    string attributeTree = "tree" + to_string(treeNo);
+    fs << attributeTree << "{";
+    writeSplit(fs,tree.split);
+    writeLeaf(fs,tree.leaves);
+    fs << "}";
+}
+
+void KazemiFaceAlignImpl::writeCascade( FileStorage& fs,vector<regressionTree>& forest,unsigned long cascadeDepth)
+{
+    string attributeCascade = "cascade" + to_string(cascadeDepth);
+    fs << attributeCascade << "{";
+    for(int i=0;i<forest.size();i++){
+        writeTree(fs,forest[i],i);
+    }
+    fs << "}";
 }
 
 }
