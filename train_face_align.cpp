@@ -50,14 +50,14 @@ using namespace cv;
 
 namespace cv{
 
-bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade)
+bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName)
 {
     vector<trainSample> samples;
     vector< vector<Point2f> > pixelCoordinates;
     generateTestCoordinates(pixelCoordinates);
     fillData(samples, landmarks, path_prefix, cascade);
-    FileStorage fs("194_Face_Align_Landmarks_Cascade.xml", FileStorage::WRITE);
-    if (!fs.isOpened())
+    ofstream fs(outputName, ios::out | ios::binary);
+    if (!fs.is_open())
     {
         cerr << "Cannot open xml to save the model"<< endl;
         return false;
@@ -75,9 +75,24 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
         vector<regressionTree> forest = gradientBoosting(samples, pixelCoordinates[i]);
         cascadeFinal.push_back(forest);
         cout<<"Fitted "<< i + 1 <<"th regressor"<<endl;
-        writeCascade(fs,forest,(i+1));
+        writeModel(fs,cascadeFinal, pixelCoordinates);
     }
-    fs.release();
+    fs.close();
+    displayresults(samples);
+    return true;
+}
+
+bool KazemiFaceAlignImpl::displayresults(vector<trainSample>& samples)
+{
+    for (int i = 0; i < samples.size(); ++i)
+    {
+        for (int j = 0; j < samples[i].currentShape.size() ; ++j)
+        {
+            circle(samples[i].img, Point(samples[i].currentShape[j]), -2, Scalar(255,0,0) );
+        }
+        imshow("Results", samples[i].img);
+        waitKey(0);
+    }
     return true;
 }
 
@@ -86,41 +101,42 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string,
                                     string path_prefix, CascadeClassifier& cascade)
 {
     unsigned long currentCount =0;
-    samples.resize(6*oversamplingAmount);
-    for (unsigned long i = 0; i < oversamplingAmount; ++i)
-    {
-        int db = 0;
-        for (map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
+    samples.resize(11*oversamplingAmount);
+    int db = 0;
+    for (map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
             dbIterator != landmarks.end(); ++dbIterator)
+    {
+        int firstCount =0;
+        if(db > 10)
+            break;
+        for (unsigned long i = 0; i < oversamplingAmount; ++i)
         {
-            if(db > 5)
-                break;
-            if(db == 0)
-                {
-                    //Assuming the current Shape of each sample's first initialization to be mean shape
-                    samples[currentCount].img = getImage(dbIterator->first,path_prefix);
-                    samples[currentCount].rect = faceDetector(samples[currentCount].img, cascade);
-                    samples[currentCount].targetShape = dbIterator->second;
-                    samples[currentCount].currentShape = meanShape;
-                    samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
-                }
+            if(i == 0)
+            {
+                //Assuming the current Shape of each sample's first initialization to be mean shape
+                samples[currentCount].img = getImage(dbIterator->first,path_prefix);
+                samples[currentCount].rect = faceDetector(samples[currentCount].img, cascade);
+                samples[currentCount].targetShape = dbIterator->second;
+                samples[currentCount].currentShape = meanShape;
+                samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
+                firstCount = currentCount;
+            }
             else
-                {
-                    //Assign some random image from the training sample as current shape
-                    RNG number(getTickCount());
-                    unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
-                    samples[currentCount].img = getImage(dbIterator->first,path_prefix);
-                    samples[currentCount].rect = faceDetector(samples[currentCount].img, cascade);
-                    samples[currentCount].targetShape = dbIterator->second;
-                    map<string, vector<Point2f>>::iterator item = landmarks.begin();
-                    advance(item, randomIndex);
-                    samples[currentCount].currentShape = item->second;
-                    samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
-
-                }
-                db++;
-                ++currentCount;
+            {
+                //Assign some random image from the training sample as current shape
+                RNG number(getTickCount());
+                unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
+                samples[currentCount].img = samples[firstCount].img;
+                samples[currentCount].rect = samples[firstCount].rect;
+                samples[currentCount].targetShape = samples[firstCount].targetShape;
+                map<string, vector<Point2f>>::iterator item = landmarks.begin();
+                advance(item, randomIndex);
+                samples[currentCount].currentShape = item->second;
+                samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
+            }
+        currentCount++;
         }
+    db++;
     }
     cout<<currentCount<<": Training Samples Loaded.."<<endl;
     return true;
@@ -197,51 +213,135 @@ bool KazemiFaceAlignImpl::calcRelativePixels(vector<Point2f>& sample,vector<Poin
     return true;
 }
 
-void KazemiFaceAlignImpl::writeSplit(FileStorage& fs, vector<splitFeature>& split)
+void KazemiFaceAlignImpl::writeSplit(ofstream& fs, vector<splitFeature>& split)
 {
     for(unsigned long i = 0; i<split.size();i++)
     {
-        fs << "splitFeature" << "{";
-        fs << "index1" << int(split[i].idx1);
-        fs << "index2" << int(split[i].idx2);
-        fs << "thresh" << int(split[i].thresh);
-        fs << "}";
+        string splitFeatureString = "Split_Feature";
+        size_t lenSplitFeatureString = splitFeatureString.size();
+        fs.write((char*)&lenSplitFeatureString, sizeof(size_t));
+        fs.write(splitFeatureString.c_str(), lenSplitFeatureString);
+        fs.write((char*)&split, sizeof(split));
     }
 }
 
-void KazemiFaceAlignImpl::writeLeaf( FileStorage& fs, vector< vector<Point2f> >& leaves)
+void KazemiFaceAlignImpl::writeLeaf(ofstream& fs, vector< vector<Point2f> >& leaves)
 {
     for (unsigned long j = 0; j < leaves.size(); ++j)
     {
-        fs << "leaf" << "{";
-        for(unsigned long i = 0 ; i < leaves[j].size() ; i++)
-        {
-            string attributeX = "x" + to_string(i);
-            fs << attributeX << leaves[j][i].x;
-            string attributeY = "y" + to_string(i);
-            fs << attributeY << leaves[j][i].y;
-        }
-        fs << "}";
+        string leafString = "Leaf";
+        size_t lenleafString = leafString.size();
+        fs.write((char*)&lenleafString, sizeof(size_t));
+        fs.write(leafString.c_str(), lenleafString);
+        size_t leafSize = leaves[j].size();
+        fs.write((char*)&leafSize, sizeof(leafSize));
+        fs.write((char*)&leaves[j][0], sizeof(Point2f)*leaves[j].size());
     }
 }
 
-void KazemiFaceAlignImpl::writeTree( FileStorage& fs, regressionTree& tree,unsigned long treeNo)
+void KazemiFaceAlignImpl::writeTree( ofstream& fs, regressionTree& tree,unsigned long treeNo)
 {
-    string attributeTree = "tree" + to_string(treeNo);
-    fs << attributeTree << "{";
+    fs.write(reinterpret_cast<const char *>(&treeNo), sizeof(unsigned long));
     writeSplit(fs,tree.split);
     writeLeaf(fs,tree.leaves);
-    fs << "}";
 }
 
-void KazemiFaceAlignImpl::writeCascade( FileStorage& fs,vector<regressionTree>& forest,unsigned long cascadeDepth)
+void KazemiFaceAlignImpl::writeCascade( ofstream& fs, vector<regressionTree>& forest)
 {
-    string attributeCascade = "cascade" + to_string(cascadeDepth);
-    fs << attributeCascade << "{";
-    for(int i=0;i<forest.size();i++){
-        writeTree(fs,forest[i],i);
+    for (unsigned long j = 0; j < forest.size(); ++j)
+    {
+        writeTree(fs,forest[j],j);
     }
-    fs << "}";
 }
+
+void KazemiFaceAlignImpl::writeModel(ofstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> > pixelCoordinates)
+{
+    //Writing MeanShape START
+    string meanShapestring = "Mean_Shape";
+    size_t lenMeanShapeString = meanShapestring.size();
+    fs.write((char*)&lenMeanShapeString, sizeof(size_t));
+    fs.write(meanShapestring.c_str(), lenMeanShapeString);
+    size_t meanShapeSize = meanShape.size();
+    fs.write(reinterpret_cast<const char *>(&meanShapeSize), sizeof(meanShapeSize));
+    fs.write((char*)&meanShape[0], sizeof(Point2f)*meanShape.size());
+    //MeanShape Writing END
+
+    //Write Pixel Coordinates START
+    string pixelCoordinatesString = "Pixel_Coordinates";
+    size_t lenpixelCoordinatesString = pixelCoordinatesString.size();
+    fs.write((char*)&lenpixelCoordinatesString, sizeof(size_t));
+    fs.write(pixelCoordinatesString.c_str(), lenpixelCoordinatesString);
+    for (unsigned long i = 0; i < pixelCoordinates.size(); ++i)
+    {
+        size_t pixelCoordinateVecSize = pixelCoordinates[i].size();
+        fs.write(reinterpret_cast<const char *>(&pixelCoordinateVecSize), sizeof(pixelCoordinateVecSize));
+        fs.write((char*)&pixelCoordinates[i][0], sizeof(Point2f)*pixelCoordinates[i].size());
+    }
+    //Write Pixel Coordinates END
+
+    //Write Cascade
+    string cascadeDepthString = "Cascade_Depth";
+    size_t lenCascadeDepthString = cascadeDepthString.size();
+    fs.write((char*)&lenCascadeDepthString, sizeof(size_t));
+    fs.write(cascadeDepthString.c_str(), lenCascadeDepthString);
+    fs.write(reinterpret_cast<const char *>(&cascadeDepth), sizeof(unsigned long));
+    //Number of Trees in each cascade
+    string numTreesperCascadeString = "Num_Trees_per_Cascade";
+    size_t lennumTreesperCascadeString = numTreesperCascadeString.size();
+    fs.write((char*)&lennumTreesperCascadeString, sizeof(size_t));
+    fs.write(numTreesperCascadeString.c_str(), lennumTreesperCascadeString);
+    fs.write(reinterpret_cast<const char *>(&numTreesperCascade), sizeof(unsigned long));
+    //Now write each Tree
+    for (unsigned long i = 0; i < forest.size(); ++i)
+    {
+        writeCascade(fs, forest[i]);
+    }
+}
+
+/*+++++++++++++++++++++++++++++++FORMAT OF TRAINED O/P FILE +++++++++++++++++++++
+String(Mean_Shape)-Length
+Mean_Shape
+(int)Mean_Shape Size
+Mean_Shape Points
+String(Pixel_Coordinates)-Length
+Pixel_coordinates
+For Each Pixel Coordinate
+    (int)Size of Pixel Coordinate Vector
+    Pixel Coordinate Points
+String(Cascade_Depth)-Length
+Cascade_Depth
+(int)CascadeDepth
+String(Num_Trees_per_Cascade)-Length
+Num_Trees_per_Cascade
+(int)numTreesperCascade
+For Each Cascade
+    For Each Tree in Cascade
+        (int)Tree Number
+        For Each Split in Tree
+            String(Split_Feature)-Length
+            Split_Feature
+            (int)Split Feature values
+        For Each leaf in Tree
+            String(Leaf)-Length
+            Leaf
+            (int)Leaf Values Vector
+++++++++++++++++++++++++++++++++FORMAT OF TRAINED O/P FILE ++++++++++++++++++++++
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }

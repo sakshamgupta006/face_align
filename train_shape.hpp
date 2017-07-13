@@ -127,11 +127,25 @@ class KazemiFaceAlignImpl
         vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current);
         //@
         vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current);
-        //XML file writing functions
-        void writeSplit( FileStorage& fs, vector<splitFeature>& split);
-        void writeLeaf( FileStorage& fs, vector< vector<Point2f> >& leaves);
-        void writeTree( FileStorage& fs, regressionTree& tree, unsigned long treeNo);
-        void writeCascade( FileStorage& fs, vector<regressionTree>& forest, unsigned long cascadeDepth);
+        //Binary file writing functions
+        void writeModel(ofstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> > pixelCoordinates);
+
+        void writeCascade( ofstream& fs, vector<regressionTree>& forest);
+
+        void writeTree( ofstream& fs, regressionTree& tree,unsigned long treeNo);
+
+        void writeLeaf(ofstream& fs, vector< vector<Point2f> >& leaves);
+
+        void writeSplit(ofstream& fs, vector<splitFeature>& split);
+
+        bool displayresults( vector<trainSample>& samples);
+
+        //@ Prediction functions
+        bool loadTrainedModel(FileStorage& fs, vector<regressionTree>& forest);
+
+        //@
+        vector< vector<Point2f> > getFacialLandmarks(Mat& image, CascadeClassifier& cascade,  vector<regressionTree>& forest);
+
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
@@ -140,7 +154,7 @@ class KazemiFaceAlignImpl
             numLandmarks = 194;
             cascadeDepth = 10;
             treeDepth = 4;
-            numTreesperCascade = 50;
+            numTreesperCascade = 500;
             learningRate = 0.1;
             oversamplingAmount = 20;
             feature_pool_size = 400;
@@ -164,7 +178,7 @@ class KazemiFaceAlignImpl
         unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples,
                                         unsigned long start, unsigned long end);
         //@Intitiates the training of Cascade
-        bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade);
+        bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName);
         //@
         vector<Point2f> getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
         //@
@@ -193,5 +207,6 @@ class KazemiFaceAlignImpl
         unsigned int numTestCoordinates;
         int numFeature;
 };
+
 }
 #endif
