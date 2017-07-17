@@ -53,7 +53,6 @@ static void help()
     cout << "To be written near code completion"<<endl;
 }
 
-
 int main(int argc, const char** argv)
 {
     string cascadeName, inputName;
@@ -64,8 +63,8 @@ int main(int argc, const char** argv)
             "{cascade | ../../../../data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
             "{path | ../data/train/ | }"
             "{meanshape | meanshape.txt |}"
-            "{poseTree| 194_Face_Align_Landmarks_Cascade.xml |}"
-            "{@filename| sample.jpg |}"
+            "{poseTree| 194_landmarks_face_align.dat |}"
+            "{@filename| ../data/train/213033657_1.jpg |}"
         );
     if(parser.has("help"))
     {
@@ -81,24 +80,27 @@ int main(int argc, const char** argv)
     }
     meanShapepath = parser.get<string>("meanshape");
     poseTree = parser.get<string>("poseTree");
-    // inputName = parser.get<string>("@filename");  // Add multiple file support
-    // if (!parser.check())
-    // {
-    //     parser.printErrors();
-    //     return 0;
-    // }
+    inputName = parser.get<string>("@filename");  // Add multiple file support
+    Mat image = imread(inputName);
+    if (!parser.check())
+    {
+        parser.printErrors();
+        return 0;
+    }
     KazemiFaceAlignImpl predict;
-    FileStorage fs;
-    fs.open(poseTree, FileStorage::READ);
-    if(!fs.isOpened())
+    ifstream fs(poseTree, ios::binary);
+    if(!fs.is_open())
     {
         cerr << "Failed to open trained model file " << poseTree << endl;
         help();
         return 1;
     }
-    vector<regressionTree> forests;
-    predict.loadTrainedModel(fs,forests);
-
+    vector< vector<regressionTree> > forests;
+    vector< vector<Point2f> > pixelCoordinates;
+    predict.loadTrainedModel(fs, forests, pixelCoordinates);
+    cout<<"Model Loaded"<<endl;
+    vector< vector<Point2f> > resultLandmarks;
+    resultLandmarks = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
 
     return 0;
 }

@@ -59,6 +59,7 @@ int main(int argc, const char** argv )
         {
             train.extractMeanShape(landmarks, path_prefix,cascade);
         }
+        train.readMeanShape();
         train.trainCascade(landmarks, path_prefix, cascade, outputName);
         cout<<"Training Complete"<<endl;
 return 0;

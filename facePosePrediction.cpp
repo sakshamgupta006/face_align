@@ -51,24 +51,165 @@ using namespace cv;
 namespace cv
 {
 
-bool KazemiFaceAlignImpl::loadTrainedModel(FileStorage& fs, vector<regressionTree>& forest)
+bool KazemiFaceAlignImpl::loadTrainedModel(ifstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> >& pixelCoordinates)
 {
+    //START READING MEAN SHAPE
+    size_t stringLength;
+    fs.read((char*)&stringLength, sizeof(size_t));
+    string meanShapestring;
+    meanShapestring.resize(stringLength);
+    fs.read(&meanShapestring[0], stringLength);
+    if(meanShapestring != "Mean_Shape")
+    {
+        String errmsg = "Model Not Saved Properly";
+        CV_Error(Error::StsBadArg, errmsg);
+        return false;
+    }
+    unsigned long meanShapesize;
+    fs.read((char*)&meanShapesize, sizeof(meanShapesize));
+    meanShape.resize(meanShapesize);
+    fs.read((char*)&meanShape[0], sizeof(Point2f)*meanShapesize);
+    //END MEANSHAPE READING
+    //START READING PIXEL COORDINATES
+    fs.read((char*)&stringLength, sizeof(size_t));
+    string pixelCoordinatesstring;
+    pixelCoordinatesstring.resize(stringLength);
+    fs.read(&pixelCoordinatesstring[0], stringLength);
+    if(pixelCoordinatesstring != "Pixel_Coordinates")
+    {
+        String errmsg = "Model Not Saved Properly";
+        CV_Error(Error::StsBadArg, errmsg);
+        return false;
+    }
+    unsigned long pixelCoordinatesMainsize;
+    fs.read((char*)&pixelCoordinatesMainsize, sizeof(pixelCoordinatesMainsize));
+    pixelCoordinates.resize(pixelCoordinatesMainsize);
+    for (unsigned long i = 0; i < pixelCoordinatesMainsize; ++i)
+    {
+        unsigned long pixelCoordinatesVecsize;
+        fs.read((char*)&pixelCoordinatesVecsize, sizeof(pixelCoordinatesVecsize));
+        pixelCoordinates[i].resize(pixelCoordinatesVecsize);
+        fs.read((char*)&pixelCoordinates[i][0], sizeof(Point2f) * pixelCoordinatesVecsize);
+    }
+    //END PIXEL COORDINATES READING
+    //START READING THE FOREST
+    fs.read((char*)&stringLength, sizeof(size_t));
+    string cascadedepthstring;
+    cascadedepthstring.resize(stringLength);
+    fs.read(&cascadedepthstring[0], stringLength);
+    if(cascadedepthstring != "Cascade_Depth")
+    {
+        String errmsg = "Model Not Saved Properly";
+        CV_Error(Error::StsBadArg, errmsg);
+        return false;
+    }
+    fs.read((char*)&cascadeDepth, sizeof(cascadeDepth));
+    fs.read((char*)&stringLength, sizeof(size_t));
+    string numtresspercascadestring;
+    numtresspercascadestring.resize(stringLength);
+    fs.read(&numtresspercascadestring[0], stringLength);
+    if(numtresspercascadestring != "Num_Trees_per_Cascade")
+    {
+        String errmsg = "Model Not Saved Properly";
+        CV_Error(Error::StsBadArg, errmsg);
+        return false;
+    }
+    fs.read((char*)&numTreesperCascade, sizeof(numTreesperCascade));
+    forest.resize(cascadeDepth);
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
-        // Change the file format to Binary to reduce memory consumption.
+        forest[i].resize(numTreesperCascade);
+        for (unsigned long j = 0; j < numTreesperCascade; ++j)
+        {
+            unsigned long splitsize;
+            fs.read((char*)&splitsize, sizeof(splitsize));
+            forest[i][j].split.resize(splitsize);
+            for (unsigned long k = 0; k < splitsize; ++k)
+            {
+                fs.read((char*)&stringLength, sizeof(size_t));
+                string splitstring;
+                splitstring.resize(stringLength);
+                fs.read(&splitstring[0], stringLength);
+                if(splitstring != "Split_Feature")
+                {
+                    String errmsg = "Model Not Saved Properly";
+                    CV_Error(Error::StsBadArg, errmsg);
+                    return false;
+                }
+                splitFeature temp;
+                fs.read((char*)&temp, sizeof(splitFeature));
+                forest[i][j].split[k] = temp;
+            }
+            unsigned long leavessize;
+            fs.read((char*)&leavessize, sizeof(leavessize));
+            forest[i][j].leaves.resize(leavessize);
+            for (unsigned long k = 0; k < leavessize; ++k)
+            {
+                fs.read((char*)&stringLength, sizeof(size_t));
+                string leafstring;
+                leafstring.resize(stringLength);
+                fs.read(&leafstring[0], stringLength);
+                if(leafstring != "Leaf")
+                {
+                    String errmsg = "Model Not Saved Properly";
+                    CV_Error(Error::StsBadArg, errmsg);
+                    return false;
+                }
+                unsigned long leafsize;
+                fs.read((char*)&leafsize, sizeof(leafsize));
+                forest[i][j].leaves[k].resize(leafsize);
+                fs.read((char*)&forest[i][j].leaves[k][0], sizeof(Point2f) * leafsize);
+            }
+        }
     }
+//FOREST READING END
     return true;
 }
 
-vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, CascadeClassifier& cascade,  vector<regressionTree>& forest)
+vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade)
 {
-    // trainSample sample;
-    // sample.img = image;
-    // sample.rects = faceDetector(image, cascade);
-    // sample.currentShape = getRelativeShapefromMean(sample, meanShape);
-    // for(unsigned long iteration = 0; iteration < forest.size(); ++iteration)
-    // {
-    // }
+    vector< vector<Point2f> > resultPoints;
+    trainSample sample;
+    sample.img = image;
+    sample.rect = faceDetector(image, cascade);
+    sample.currentShape = getRelativeShapetoMean(sample, meanShape);
+    vector<Point2f> othervec;
+    othervec.resize(sample.currentShape.size());
+    othervec = sample.currentShape;
+    for(unsigned int l = 0; l < sample.rect.size(); l++)
+    {
+        for (int i = 0; i < cascadeFinal.size() ; ++i)
+        {
+            vector<Point2f> pixel_relative = pixelCoordinates[i];
+            calcRelativePixels(sample.currentShape, pixel_relative);
+            extractPixelValues(sample, pixel_relative);
+            for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
+            {
+                unsigned long k =0 ;
+                while(k < cascadeFinal[i][j].split.size())
+                {
+                    if ((float)sample.pixelValues[cascadeFinal[i][j].split[k].idx1] - (float)sample.pixelValues[cascadeFinal[i][j].split[k].idx2] > cascadeFinal[i][j].split[k].thresh)
+                        k = leftChild(k);
+                    else
+                        k = rightChild(k);
+                }
+                k = k - cascadeFinal[i][j].split.size();
+                vector<Point2f> temp;
+                temp.resize(cascadeFinal[i][j].leaves[k].size());
+                for (int g = 0; g < cascadeFinal[i][j].leaves[k].size(); ++g)
+                {
+                    temp[g] = learningRate * cascadeFinal[i][j].leaves[k][g];
+                }
+                sample.currentShape = calcDiff(temp, sample.currentShape);
+                othervec = calcDiff(cascadeFinal[i][j].leaves[k], othervec);
+            }
+        }
+        resultPoints[l] = sample.currentShape;
+    }
+    //change back to original coordinates
+    sample.currentShape = getRelativeShapefromMean(sample, sample.currentShape);
+    displayresults(sample);
+    return resultPoints;
 }
 
 

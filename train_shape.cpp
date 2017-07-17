@@ -159,7 +159,7 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
         //|CASCADE_FIND_BIGGEST_OBJECT,
         //|CASCADE_DO_ROUGH_SEARCH
         |CASCADE_SCALE_IMAGE,
-        Size(30, 30) );
+        Size(100, 100) );
     numFaces = faces.size();
     // for ( size_t i = 0; i < faces.size(); i++ )
     // {
@@ -318,7 +318,8 @@ bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2
 {
     Mat image = sample.img;
     sample.pixelValues.resize(pixelCoordinates.size());
-    cvtColor(image,image,COLOR_BGR2GRAY);
+    if(image.channels() != 1)
+        cvtColor(image,image,COLOR_BGR2GRAY);
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
     {
         if(pixelCoordinates[i].x < image.rows && pixelCoordinates[i].y < image.cols)
@@ -396,6 +397,33 @@ vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sampl
         currentPoints[1] = Point2f((sample.rect[facenum].x + sample.rect[facenum].width),sample.rect[facenum].y);
         currentPoints[2] = Point2f(sample.rect[facenum].x , (sample.rect[facenum].y + sample.rect[facenum].height));
         Mat affineMatrix = getAffineTransform( meanShapeReferencePoints, currentPoints);
+        vector<Point2f> intermediate;
+        int counter = 0;
+        //Transform each fiducial Point to get it relative to the initital image
+        for (vector< Point2f >::iterator fiducialIt = landmarks.begin() ; fiducialIt != landmarks.end() ; fiducialIt++ )
+        {
+            Mat fiducialPointMatrix = (Mat_<double>(3,1) << (*fiducialIt).x, (*fiducialIt).y , 1);
+            Mat resultAffineMatrix = (Mat_<double>(3,1)<<0,0,1);
+            resultAffineMatrix = affineMatrix*fiducialPointMatrix;
+            sample.currentShape.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
+        }
+    }
+
+    return intermediate;
+}
+
+
+vector<Point2f> KazemiFaceAlignImpl::getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks)
+{
+    vector<Point2f> intermediate;
+    intermediate.resize(landmarks.size());
+    for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
+    {
+        Point2f currentPoints[3];
+        currentPoints[0] = Point2f(sample.rect[facenum].x,sample.rect[facenum].y);
+        currentPoints[1] = Point2f((sample.rect[facenum].x + sample.rect[facenum].width),sample.rect[facenum].y);
+        currentPoints[2] = Point2f(sample.rect[facenum].x , (sample.rect[facenum].y + sample.rect[facenum].height));
+        Mat affineMatrix = getAffineTransform(  currentPoints, meanShapeReferencePoints);
         vector<Point2f> intermediate;
         int counter = 0;
         //Transform each fiducial Point to get it relative to the initital image

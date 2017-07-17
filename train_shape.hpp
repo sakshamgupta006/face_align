@@ -132,24 +132,30 @@ class KazemiFaceAlignImpl
 
         void writeCascade( ofstream& fs, vector<regressionTree>& forest);
 
-        void writeTree( ofstream& fs, regressionTree& tree,unsigned long treeNo);
+        void writeTree( ofstream& fs, regressionTree& tree);
 
         void writeLeaf(ofstream& fs, vector< vector<Point2f> >& leaves);
 
         void writeSplit(ofstream& fs, vector<splitFeature>& split);
 
-        bool displayresults( vector<trainSample>& samples);
+        bool displayresults(trainSample& samples);
+
+        void testnewImage(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
+
+        vector<Point2f> getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks);
 
         //@ Prediction functions
-        bool loadTrainedModel(FileStorage& fs, vector<regressionTree>& forest);
+        bool loadTrainedModel(ifstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> >& pixelCoordinates);
 
+        bool getRelativeShape(trainSample& sample);
+
+        bool displayresults2(vector<trainSample>& samples);
         //@
-        vector< vector<Point2f> > getFacialLandmarks(Mat& image, CascadeClassifier& cascade,  vector<regressionTree>& forest);
+        vector< vector<Point2f> > getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
 
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
-            readMeanShape();
             numFaces = 1;
             numLandmarks = 194;
             cascadeDepth = 10;
@@ -196,15 +202,15 @@ class KazemiFaceAlignImpl
         vector<Point2f> meanShapeBounds;
         Point2f meanShapeReferencePoints[3];
         vector< vector<Point2f> > initialShape;
-        unsigned int cascadeDepth;
-        unsigned int treeDepth;
-        unsigned int numTreesperCascade;
+        unsigned long cascadeDepth;
+        unsigned long treeDepth;
+        unsigned long numTreesperCascade;
         float learningRate;
         unsigned long oversamplingAmount;
-        unsigned int feature_pool_size;
+        unsigned long feature_pool_size;
         float lambda;
-        unsigned int numTestSplits;
-        unsigned int numTestCoordinates;
+        unsigned long numTestSplits;
+        unsigned long numTestCoordinates;
         int numFeature;
 };
 
