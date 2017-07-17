@@ -82,6 +82,82 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
     return true;
 }
 
+bool KazemiFaceAlignImpl::displayresults2(vector<trainSample>& samples)
+{
+    for (int i = 0; i < samples.size(); ++i)
+     {
+        for (int j = 0; j < samples[i].currentShape.size() ; ++j)
+        {
+            circle(samples[i].img, Point(samples[i].currentShape[j]), -2, Scalar(255,0,0) );
+        }
+        imshow("Results", samples[i].img);
+        waitKey(0);
+    }
+    return true;
+}
+
+bool KazemiFaceAlignImpl::displayresults(trainSample& samples)
+{
+    for (int j = 0; j < samples.currentShape.size() ; ++j)
+    {
+        circle(samples.img, Point(samples.currentShape[j]), -2, Scalar(255,0,0) );
+    }
+    imshow("Results", samples.img);
+    waitKey(0);
+    return true;
+}
+
+void KazemiFaceAlignImpl::testnewImage(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade)
+{
+    trainSample sample;
+    sample.img = image;
+    sample.rect = faceDetector(image, cascade);
+    sample.currentShape = getRelativeShapetoMean(sample, meanShape);
+    vector<Point2f> othervec;
+    othervec.resize(sample.currentShape.size());
+    othervec = sample.currentShape;
+    for (int i = 0; i < cascadeFinal.size() ; ++i)
+    {
+        vector<Point2f> pixel_relative = pixelCoordinates[i];
+        calcRelativePixels(sample.currentShape, pixel_relative);
+        extractPixelValues(sample, pixel_relative);
+        for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
+        {
+            int k =0 ;
+            while(k < cascadeFinal[i][j].split.size())
+            {
+                if ((float)sample.pixelValues[cascadeFinal[i][j].split[k].idx1] - (float)sample.pixelValues[cascadeFinal[i][j].split[k].idx2] > cascadeFinal[i][j].split[k].thresh)
+                        k = leftChild(k);
+                    else
+                        k = rightChild(k);
+            }
+            k = k - cascadeFinal[i][j].split.size();
+            vector<Point2f> temp;
+            temp.resize(cascadeFinal[i][j].leaves[k].size());
+            for (int g = 0; g < cascadeFinal[i][j].leaves[k].size(); ++g)
+            {
+                temp[g] = learningRate * cascadeFinal[i][j].leaves[k][g];
+            }
+            //sample.currentShape = calcSum(cascadeFinal[i][j].leaves[k], sample.currentShape);
+            sample.currentShape = calcDiff(temp, sample.currentShape);
+            othervec = calcDiff(cascadeFinal[i][j].leaves[k], othervec);
+            // cout<<"Current Shape In Cascade "<<i<<"In the Tree "<<j<<endl;
+            // for (int l = 0; l < sample.currentShape.size(); ++l)
+            // {
+            //     cout<<sample.currentShape[l]<<endl;
+            // }
+            // cout<<"Other Vector In Cascade "<<i<<"In the Tree "<<j<<endl;
+            // for (int l = 0; l < sample.currentShape.size(); ++l)
+            // {
+            //     cout<<othervec[l]<<endl;
+            // }
+        }
+    }
+    //change back to original coordinates
+    sample.currentShape = getRelativeShapefromMean(sample, sample.currentShape);
+    displayresults(sample);
+}
+
 bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
                                     string path_prefix, CascadeClassifier& cascade)
 {
