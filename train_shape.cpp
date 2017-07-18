@@ -323,44 +323,42 @@ bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2
     for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
     {
         if(pixelCoordinates[i].x < image.rows && pixelCoordinates[i].y < image.cols)
+        {
             sample.pixelValues[i] = (int)image.at<uchar>(pixelCoordinates[i].x, pixelCoordinates[i].y);
+        }
     }
     return true;
 }
 
-vector<Point2f> KazemiFaceAlignImpl::calcDiff(vector<Point2f>& target, vector<Point2f>& current)
+bool KazemiFaceAlignImpl::calcDiff(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)
 {
-    vector<Point2f> resultant;
-    resultant.resize(target.size());
-    for (unsigned long i = 0; i < target.size(); ++i)
+    output.resize(input1.size());
+    for (unsigned long i = 0; i < input1.size(); ++i)
     {
-        resultant[i] = target[i] - current[i];
+        output[i] = input1[i] - input2[i];
     }
-    return resultant;
+    return true;
 }
 
-vector<Point2f> KazemiFaceAlignImpl::calcSum(vector<Point2f>& target, vector<Point2f>& current)
+bool KazemiFaceAlignImpl::calcSum(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)
 {
-    vector<Point2f> resultant;
-    resultant.resize(current.size());
-    for (unsigned long i = 0; i < target.size(); ++i)
+    output.resize(input1.size());
+    for (unsigned long i = 0; i < input1.size(); ++i)
     {
-        resultant[i] = target[i] + current[i];
+        output[i] = input1[i] + input2[i];
     }
-    return resultant;
+    return true;
 }
 
-vector<Point2f> KazemiFaceAlignImpl::calcMul(vector<Point2f>& target, vector<Point2f>& current)
+bool KazemiFaceAlignImpl::calcMul(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)
 {
-
-    vector<Point2f> resultant;
-    resultant.resize(target.size());
-    for (unsigned long i = 0; i < target.size(); ++i)
+    output.resize(input1.size());
+    for (unsigned long i = 0; i < input1.size(); ++i)
     {
-        resultant[i].x = target[i].x * current[i].x;
-        resultant[i].y = target[i].y * current[i].y;
+        output[i].x = input1[i].x * input2[i].x;
+        output[i].y = input1[i].y * input2[i].y;
     }
-    return resultant;
+    return true;;
 }
 
 bool KazemiFaceAlignImpl::calcMeanShapeBounds()
@@ -386,10 +384,8 @@ bool KazemiFaceAlignImpl::calcMeanShapeBounds()
     return true;
 }
 
-vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks)
+bool KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks)
 {
-    vector<Point2f> intermediate;
-    intermediate.resize(landmarks.size());
     for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
     {
         Point2f currentPoints[3];
@@ -408,15 +404,12 @@ vector<Point2f> KazemiFaceAlignImpl::getRelativeShapefromMean(trainSample& sampl
             sample.currentShape.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
         }
     }
-
-    return intermediate;
+    return true;
 }
 
 
-vector<Point2f> KazemiFaceAlignImpl::getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks)
+bool KazemiFaceAlignImpl::getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks)
 {
-    vector<Point2f> intermediate;
-    intermediate.resize(landmarks.size());
     for(unsigned int facenum =0 ; facenum < sample.rect.size(); facenum++)
     {
         Point2f currentPoints[3];
@@ -432,10 +425,9 @@ vector<Point2f> KazemiFaceAlignImpl::getRelativeShapetoMean(trainSample& sample,
             Mat fiducialPointMatrix = (Mat_<double>(3,1) << (*fiducialIt).x, (*fiducialIt).y , 1);
             Mat resultAffineMatrix = (Mat_<double>(3,1)<<0,0,1);
             resultAffineMatrix = affineMatrix*fiducialPointMatrix;
-            intermediate.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
+            sample.currentShape.push_back(Point2f(resultAffineMatrix.at<double>(0,0) , resultAffineMatrix.at<double>(1,0)));
         }
     }
-    return intermediate;
+    return true;
 }
-
 }

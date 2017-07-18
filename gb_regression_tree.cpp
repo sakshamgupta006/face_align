@@ -59,7 +59,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
 {
     splitFeature feature;
     double acceptProbability, randomdoublenumber;
-    unsigned long attempts = 15;
+    unsigned long attempts = 20;
     do
     {
         RNG rnd(getTickCount());
@@ -95,7 +95,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
         {
             if((float)samples[i].pixelValues[features[j].idx1] - (float)samples[i].pixelValues[features[j].idx2] > features[j].thresh)
             {
-                leftSums[j] = calcSum(leftSums[j], samples[i].residualShape);
+                calcSum(leftSums[j], samples[i].residualShape, leftSums[j]);
                 leftCount[j] += 1;
             }
         }
@@ -112,7 +112,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
         unsigned long rightCount = end - start + 1 - leftCount[i];  // See for the extra 1
         if(leftCount[i] != 0 && rightCount != 0)
         {
-            tempFeature = calcDiff(sum, leftSums[i]);
+            calcDiff(sum, leftSums[i], tempFeature);
             //To calculate score
             Point2f leftSumsDot(0,0), tempFeatureDot(0,0);
             for (unsigned long dotit = 0; dotit < leftSums.size(); ++dotit)
@@ -134,7 +134,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     }
     leftSum = leftSums[bestFeature];
     if(leftSum.size() != 0)
-        rightSum = calcDiff(sum, leftSum);
+        calcDiff(sum, leftSum, rightSum);
     else
     {
         rightSum = sum;
@@ -150,12 +150,12 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     deque< pair<unsigned long, unsigned long > >  partition;
     partition.push_back(make_pair(0, (unsigned long)samples.size()));
     const unsigned long numSplitNodes = (unsigned long)(pow(2 , (double)getTreeDepth()) - 1);
-    vector< vector<Point2f> >sums(numSplitNodes*2 + 1);
+    vector< vector<Point2f> > sums(numSplitNodes*2 + 1);
     ////---------------------------------SCOPE OF THREADING---------------------------------------////
     //Initialize Sum for the root node
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-        sums[0] = calcSum(sums[0],samples[i].residualShape);
+        calcSum(sums[0], samples[i].residualShape, sums[0]);
     }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
@@ -176,7 +176,7 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     {
         unsigned long currentCount = partition[i].second - partition[i].first + 1;
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-            residualSum = calcSum(residualSum, samples[j].currentShape);
+            calcSum(residualSum, samples[j].currentShape, residualSum);
         //Calculate Reciprocal
         for (unsigned long k = 0; k < residualSum.size(); ++k)
         {
@@ -192,12 +192,12 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         //End Reciprocal
         if(partition[i].first != partition[i].second)
             {
-                //tree.leaves[i] = calcMul(residualSum,sums[numSplitNodes]); // To be fully implemented in case of missing labels
                 tree.leaves[i] = sums[numSplitNodes+i];
                 for (unsigned long l = 0; l < residualSum.size(); ++l)
                 {
                     tree.leaves[i][l] = learningRate * tree.leaves[i][l];
                 }
+                calcMul(residualSum,tree.leaves[i], tree.leaves[i]); // To be fully implemented in case of missing labels
             }
         else
             tree.leaves[i].assign(samples[0].targetShape.size(), Point2f(0,0));
@@ -205,8 +205,8 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         tempvector.resize(samples[0].targetShape.size());
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
         {
-            tempvector = calcSum(samples[j].currentShape, tree.leaves[i]);
-            samples[j].currentShape = calcDiff(samples[j].targetShape, tempvector);
+            calcSum(samples[j].currentShape, tree.leaves[i], tempvector);
+            calcDiff(samples[j].targetShape, tempvector, samples[j].currentShape);
             //To be fully implemented in case of missing labels
             /* for (unsigned long m = 0; m < samples[j].currentShape.size(); ++m)
             {
@@ -229,7 +229,7 @@ vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>
     }
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-       samples[i].currentShape = calcDiff(samples[i].targetShape, samples[i].residualShape);
+        calcDiff(samples[i].targetShape, samples[i].residualShape, samples[i].currentShape);
     }
     return forest;
 }

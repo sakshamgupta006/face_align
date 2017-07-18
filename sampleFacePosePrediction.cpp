@@ -57,12 +57,11 @@ int main(int argc, const char** argv)
 {
     string cascadeName, inputName;
     CascadeClassifier cascade;
-    string meanShapepath, poseTree;
+    string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
             "{cascade | ../../../../data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
             "{path | ../data/train/ | }"
-            "{meanshape | meanshape.txt |}"
             "{poseTree| 194_landmarks_face_align.dat |}"
             "{@filename| ../data/train/213033657_1.jpg |}"
         );
@@ -78,7 +77,6 @@ int main(int argc, const char** argv)
         help();
         return -1;
     }
-    meanShapepath = parser.get<string>("meanshape");
     poseTree = parser.get<string>("poseTree");
     inputName = parser.get<string>("@filename");  // Add multiple file support
     Mat image = imread(inputName);
@@ -98,6 +96,7 @@ int main(int argc, const char** argv)
     vector< vector<regressionTree> > forests;
     vector< vector<Point2f> > pixelCoordinates;
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
+    predict.calcMeanShapeBounds();
     cout<<"Model Loaded"<<endl;
     vector< vector<Point2f> > resultLandmarks;
     resultLandmarks = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);

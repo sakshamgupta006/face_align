@@ -172,9 +172,9 @@ vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, ve
     trainSample sample;
     sample.img = image;
     sample.rect = faceDetector(image, cascade);
-    sample.currentShape = getRelativeShapetoMean(sample, meanShape);
-    for(unsigned int l = 0; l < sample.rect.size(); l++)
-    {
+    //sample.currentShape = getRelativeShapetoMean(sample, meanShape);
+    getRelativeShapefromMean(sample, meanShape);
+    //displayresults(sample);
         for (int i = 0; i < cascadeFinal.size() ; ++i)
         {
             vector<Point2f> pixel_relative = pixelCoordinates[i];
@@ -191,13 +191,15 @@ vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, ve
                         k = rightChild(k);
                 }
                 k = k - cascadeFinal[i][j].split.size();
-                sample.currentShape = calcSum(cascadeFinal[i][j].leaves[k], sample.currentShape);
+                vector<Point2f> temp;
+                temp.resize(sample.currentShape.size());
+                for (unsigned long l = 0; l < sample.currentShape.size(); ++l)
+                {
+                    temp[l] = learningRate * cascadeFinal[i][j].leaves[k][l];
+                }
+                calcDiff(temp, sample.currentShape, sample.currentShape);
             }
         }
-        resultPoints[l] = sample.currentShape;
-    }
-    //change back to original coordinates
-    sample.currentShape = getRelativeShapefromMean(sample, sample.currentShape);
     displayresults(sample);
     return resultPoints;
 }

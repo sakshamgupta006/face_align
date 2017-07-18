@@ -122,11 +122,11 @@ class KazemiFaceAlignImpl
         //@ Calculate distance between given pixel co-ordinates
         double getDistance(Point2f first , Point2f second);
         //@ Calculate different between the annotations
-        vector<Point2f> calcDiff(vector<Point2f>& target, vector<Point2f>& current);
+        bool calcDiff(vector<Point2f>& target, vector<Point2f>& current, vector<Point2f>& output);
         //A Calculate Sum of annotation vectors
-        vector<Point2f> calcSum(vector<Point2f>& target, vector<Point2f>& current);
+        bool calcSum(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output);
         //@
-        vector<Point2f> calcMul(vector<Point2f>& target, vector<Point2f>& current);
+        bool calcMul(vector<Point2f>& target, vector<Point2f>& current, vector<Point2f>& output);
         //Binary file writing functions
         void writeModel(ofstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> > pixelCoordinates);
 
@@ -142,7 +142,7 @@ class KazemiFaceAlignImpl
 
         void testnewImage(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
 
-        vector<Point2f> getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks);
+        bool getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks);
 
         //@ Prediction functions
         bool loadTrainedModel(ifstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> >& pixelCoordinates);
@@ -186,7 +186,7 @@ class KazemiFaceAlignImpl
         //@Intitiates the training of Cascade
         bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName);
         //@
-        vector<Point2f> getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
+        bool getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
         //@
         bool fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
                        string path_prefix, CascadeClassifier& cascade);
@@ -195,6 +195,12 @@ class KazemiFaceAlignImpl
         bool calcRelativePixels(vector<Point2f>& sample,vector<Point2f>& pixel_coordinates);
         //@
         bool generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates);
+
+
+        void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
+        void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);
+        void writeLeafxml( FileStorage& fs, vector< vector<Point2f> >& leaves);
+        void writeSplitxml(FileStorage& fs, vector<splitFeature>& split);
     private:
         int numFaces;
         int numLandmarks;
