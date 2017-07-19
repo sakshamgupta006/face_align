@@ -106,9 +106,9 @@ class KazemiFaceAlignImpl
         /*@reads the file list(xml) created by imagelist_creator.cpp */
         bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
         /*@Parse the txt file to extract image and its annotations*/
-        bool readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix);
+        bool readtxt(vector<cv::String>& filepath, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
         //@ Extracts Mean Shape from the given dataset
-        bool extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
+        bool extractMeanShape(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
         //@ Applies Haar based facedetectorl
         vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
         //@ return an image
@@ -184,11 +184,11 @@ class KazemiFaceAlignImpl
         unsigned long partitionSamples(splitFeature split, vector<trainSample>& samples,
                                         unsigned long start, unsigned long end);
         //@Intitiates the training of Cascade
-        bool trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName);
+        bool trainCascade(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName);
         //@
         bool getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
         //@
-        bool fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
+        bool fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
                        string path_prefix, CascadeClassifier& cascade);
         //@
         unsigned int findNearestLandmark(Point2f& pixelValue);

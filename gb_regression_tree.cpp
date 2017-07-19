@@ -150,12 +150,15 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     deque< pair<unsigned long, unsigned long > >  partition;
     partition.push_back(make_pair(0, (unsigned long)samples.size()));
     const unsigned long numSplitNodes = (unsigned long)(pow(2 , (double)getTreeDepth()) - 1);
-    vector< vector<Point2f> > sums(numSplitNodes*2 + 1);
+    vector<Point2f> zerovector;
+    zerovector.assign(samples[0].targetShape.size(), Point2f(0,0));
+    vector< vector<Point2f> > sums(numSplitNodes*2 + 1 , zerovector);
     ////---------------------------------SCOPE OF THREADING---------------------------------------////
     //Initialize Sum for the root node
     for (unsigned long i = 0; i < samples.size(); i++)
     {
-        calcSum(sums[0], samples[i].residualShape, sums[0]);
+        calcDiff(samples[i].targetShape, samples[i].currentShape, samples[i].residualShape);
+        calcSum(samples[i].residualShape, sums[0], sums[0]);
     }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
@@ -164,19 +167,21 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         partition.pop_front();
         splitFeature split = splitGenerator(samples, pixelCoordinates, rangeleaf.first, rangeleaf.second, sums[i], sums[leftChild(i)], sums[rightChild(i)]);
         tree.split.push_back(split);
-        const unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
+        unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
         partition.push_back(make_pair(rangeleaf.first, mid));
         partition.push_back(make_pair(mid, rangeleaf.second));
     }
     //following Dlib's approach
     vector<Point2f> residualSum(samples[0].targetShape.size());
     tree.leaves.resize(partition.size());
+    vector<Point2f> onesvector(samples[0].targetShape.size());
+    onesvector.assign(samples[0].targetShape.size(), Point2f(1,1));
     //Use partition value to calculate average value of leafs
     for (unsigned long int i = 0; i < partition.size(); ++i)
     {
         unsigned long currentCount = partition[i].second - partition[i].first + 1;
-        for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-            calcSum(residualSum, samples[j].currentShape, residualSum);
+        /*for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
+            calcSum(residualSum, onesvector, residualSum);
         //Calculate Reciprocal
         for (unsigned long k = 0; k < residualSum.size(); ++k)
         {
@@ -188,16 +193,20 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
                 residualSum[k].y = 1 / residualSum[k].y;
             else
                 residualSum[k].y = 0;
-        }
+        }*/
         //End Reciprocal
         if(partition[i].first != partition[i].second)
             {
                 tree.leaves[i] = sums[numSplitNodes+i];
-                for (unsigned long l = 0; l < residualSum.size(); ++l)
+                for (unsigned long l = 0; l < tree.leaves[i].size(); ++l)
                 {
-                    tree.leaves[i][l] = learningRate * tree.leaves[i][l];
+                    //cout<<"Initial tree value"<<tree.leaves[i][l]<<endl;
+                    tree.leaves[i][l].x = ( learningRate * tree.leaves[i][l].x ) / currentCount;
+                    tree.leaves[i][l].y = (learningRate * tree.leaves[i][l].y ) / currentCount;
+                    //cout<<tree.leaves[i][l]<<endl;
                 }
-                calcMul(residualSum,tree.leaves[i], tree.leaves[i]); // To be fully implemented in case of missing labels
+
+                //calcMul(residualSum,tree.leaves[i], tree.leaves[i]); // To be fully implemented in case of missing labels
             }
         else
             tree.leaves[i].assign(samples[0].targetShape.size(), Point2f(0,0));
@@ -205,8 +214,8 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         tempvector.resize(samples[0].targetShape.size());
         for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
         {
-            calcSum(samples[j].currentShape, tree.leaves[i], tempvector);
-            calcDiff(samples[j].targetShape, tempvector, samples[j].currentShape);
+            calcSum(samples[j].currentShape, tree.leaves[i], samples[j].currentShape);
+            //calcDiff(samples[j].targetShape, tempvector, samples[j].currentShape);
             //To be fully implemented in case of missing labels
             /* for (unsigned long m = 0; m < samples[j].currentShape.size(); ++m)
             {

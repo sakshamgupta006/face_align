@@ -94,7 +94,7 @@ bool KazemiFaceAlignImpl::readAnnotationList(vector<cv::String>& l, string annot
 }
 
 //read txt files iteratively opening image and its annotations
-bool KazemiFaceAlignImpl::readtxt(vector<cv::String>& filepath, std::map<string, vector<Point2f>>& landmarks, string path_prefix)
+bool KazemiFaceAlignImpl::readtxt(vector<cv::String>& filepath, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix)
 {
     //txt file read initiated
     vector<cv::String>::iterator fileiterator = filepath.begin();
@@ -151,7 +151,7 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     vector<Rect> faces;
     int scale = 1;
     //remove once testing is complete
-    Mat gray, smallImg;
+    Mat gray;
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
     cascade.detectMultiScale( gray, faces,
@@ -161,6 +161,11 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
         |CASCADE_SCALE_IMAGE,
         Size(100, 100) );
     numFaces = faces.size();
+    for (int i = 0; i < numFaces; ++i)
+    {
+        faces[i].width += image.rows/20;
+        faces[i].height += image.cols/10;
+    }
     // for ( size_t i = 0; i < faces.size(); i++ )
     // {
     //     Rect r = faces[i];
@@ -178,10 +183,10 @@ Mat KazemiFaceAlignImpl::getImage(string imgpath, string path_prefix)
     return imread(path_prefix + imgpath + ".jpg");
 }
 
-bool KazemiFaceAlignImpl::extractMeanShape(std::map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade)
+bool KazemiFaceAlignImpl::extractMeanShape(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade)
 {
     //string meanShapeFileName = "mean_shape.xml";
-    std::map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin(); // random inititalization as
+    std::unordered_map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin(); // random inititalization as
     //any face file can be taken by imagelist creator
     //find the face size dimmensions which will be used to center and scale each database image
     Mat initialImage = getImage(dbIterator->first,path_prefix);

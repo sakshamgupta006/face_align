@@ -20,7 +20,7 @@ int main(int argc, const char** argv )
         CascadeClassifier cascade;
         bool calcmeanshape = false;
         vector<cv::String> names;
-        std::map<string, vector<Point2f>> landmarks;
+        std::unordered_map<string, vector<Point2f>> landmarks;
         string path_prefix;
         cv::CommandLineParser parser(argc ,argv,
             "{help h||}"

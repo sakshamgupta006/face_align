@@ -48,16 +48,18 @@
 using namespace std;
 using namespace cv;
 
+#define numSamples 100
+
 namespace cv{
 
-bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName)
+bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName)
 {
+    double total_time = 0, t = 0;
     vector<trainSample> samples;
     vector< vector<Point2f> > pixelCoordinates;
     generateTestCoordinates(pixelCoordinates);
     fillData(samples, landmarks, path_prefix, cascade);
     ofstream fs(outputName, ios::out | ios::binary);
-    FileStorage fs2("194_Face_Align_Landmarks_Cascade.xml", FileStorage::WRITE);
     if (!fs.is_open())
     {
         cerr << "Cannot open xml to save the model"<< endl;
@@ -67,6 +69,7 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
     cout<<"Training Started"<<endl;
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
+        t = (double)getTickCount();
         vector<Point2f> pixrel(pixelCoordinates[i].size());
         pixrel = pixelCoordinates[i];
         for (unsigned long j = 0; j < samples.size(); ++j)
@@ -78,9 +81,12 @@ bool KazemiFaceAlignImpl::trainCascade(std::map<string, vector<Point2f>>& landma
         cascadeFinal.push_back(forest);
         cout<<"Fitted "<< i + 1 <<"th regressor"<<endl;
         //writeCascadexml(fs2, forest);
+        t = (double)getTickCount() - t;
+        total_time += t;
+        cout<<"Time Taken to fit Cascade = "<< t/(getTickFrequency()*60) <<" min"<<endl;
     }
+    cout<<"Total training time = "<< t/(getTickFrequency()*60*60) <<" hrs"<<endl;
     writeModel(fs,cascadeFinal, pixelCoordinates);
-    fs2.release();
     fs.close();
     displayresults2(samples);
     // Mat img = imread("../data/train/213033657_1.jpg");
@@ -93,11 +99,12 @@ bool KazemiFaceAlignImpl::displayresults2(vector<trainSample>& samples)
 {
     for (int i = 0; i < samples.size(); ++i)
      {
+        Mat image = samples[i].img.clone();
         for (int j = 0; j < samples[i].currentShape.size() ; ++j)
         {
-            circle(samples[i].img, Point(samples[i].currentShape[j]), 2, Scalar(255,0,0) ,-1);
+            circle(image, Point(samples[i].currentShape[j]), 2, Scalar(255,0,0) ,-1);
         }
-        imshow("Results", samples[i].img);
+        imshow("Results", image);
         waitKey(0);
     }
     return true;
@@ -105,11 +112,12 @@ bool KazemiFaceAlignImpl::displayresults2(vector<trainSample>& samples)
 
 bool KazemiFaceAlignImpl::displayresults(trainSample& samples)
 {
+    Mat image = samples.img.clone();
     for (int j = 0; j < samples.currentShape.size() ; ++j)
     {
-        circle(samples.img, Point(samples.currentShape[j]), 2, Scalar(255,0,0), -1 );
+        circle(image, Point(samples.currentShape[j]), 2, Scalar(255,0,0), -1 );
     }
-    imshow("Results", samples.img);
+    imshow("Results", image);
     waitKey(0);
     return true;
 }
@@ -145,23 +153,23 @@ void KazemiFaceAlignImpl::testnewImage(Mat& image, vector< vector<regressionTree
                 {
                     temp[l] = learningRate * cascadeFinal[i][j].leaves[k][l];
                 }
-                sample.currentShape = calcDiff(temp, sample.currentShape);
+                calcDiff(temp, sample.currentShape, sample.currentShape);
             }
         }
     displayresults(sample);
 }
 
-bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string, vector<Point2f>>& landmarks,
+bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
                                     string path_prefix, CascadeClassifier& cascade)
 {
     unsigned long currentCount =0;
-    samples.resize(301*oversamplingAmount);
+    samples.resize((numSamples + 1) * oversamplingAmount);
     int db = 0;
-    for (map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
+    for (unordered_map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
             dbIterator != landmarks.end(); ++dbIterator)
     {
         unsigned int firstCount = 0;
-        if(db > 300)
+        if(db > numSamples)
             break;
         for (unsigned long i = 0; i < oversamplingAmount; ++i)
         {
@@ -177,7 +185,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string,
                 }
                 samples[currentCount].targetShape = dbIterator->second;
                 getRelativeShapefromMean(samples[currentCount], meanShape);
-                samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
+                calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
                 if(samples[currentCount].currentShape.size() != 0)
                 {
                     firstCount = currentCount;
@@ -187,8 +195,6 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string,
             else
             {
                 //Assign some random image from the training sample as current shape
-                RNG number(getTickCount());
-                unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
                 samples[currentCount].img = samples[firstCount].img;
                 samples[currentCount].rect = samples[firstCount].rect;
                 if(samples[currentCount].rect.size() != 1)
@@ -197,13 +203,25 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::map<string,
                     continue;
                 }
                 samples[currentCount].targetShape = samples[firstCount].targetShape;
-                map<string, vector<Point2f>>::iterator item = landmarks.begin();
-                advance(item, randomIndex);
-                samples[currentCount].currentShape = item->second;
+                vector<Point2f> inter(samples[currentCount].targetShape.size());
+                for (int randomint = 0; randomint < numSamples/10; ++randomint)
+                {
+                    RNG number(getTickCount());
+                    unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
+                    unordered_map<string, vector<Point2f>>::iterator item = landmarks.begin();
+                    advance(item, randomIndex);
+                    samples[currentCount].currentShape = item->second;
+                    getRelativeShape(samples[currentCount]);
+                    calcSum(samples[currentCount].currentShape, inter, inter);
+                }
+                for (unsigned long l = 0; l < samples[currentCount].targetShape.size(); ++l)
+                {
+                    samples[currentCount].currentShape[l].x = inter[l].x / (numSamples/10);
+                    samples[currentCount].currentShape[l].y = inter[l].y / (numSamples/10);
+                }
                 if(samples[currentCount].currentShape.size() != 0)
                 {
-                    getRelativeShape(samples[currentCount]);
-                    samples[currentCount].residualShape  = calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape);
+                    calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
                     currentCount++;
                 }
             }
