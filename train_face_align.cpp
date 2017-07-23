@@ -48,9 +48,41 @@
 using namespace std;
 using namespace cv;
 
-#define numSamples 100
+#define numSamples 200
 
-namespace cv{
+namespace cv
+{
+
+//Parallelization Functions
+class calcSumSample : public ParallelLoopBody
+{
+public:
+    calcSumSample (vector<trainSample>& samples, vector<Point2f>& pixelCoordinates)
+        : _samples(samples), _sumOutput(sumOutput)
+    {
+    }
+
+    virtual void operator ()(const Range& range) const
+    {
+        for (unsigned long r = range.start; r < range.end; r++)
+        {
+            if(samples.currentShape.size()!= meanShape.size())
+            {
+                String errmsg = "Shape Size Mismatch Detected";
+                CV_Error(Error::StsBadArg, errmsg);
+                return false;
+            }
+            for (unsigned long i = 0; i < _samples[r].currentShape.size(); ++i)
+            {
+                _sumOutput[i] = _samples[r].currentShape[i] + _sumOutput[i];
+            }
+        }
+    }
+
+private:
+    vector<trainSample>& _samples;
+    vector<Point2f>& _sumOutput;
+};
 
 bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName)
 {
@@ -62,7 +94,7 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
     ofstream fs(outputName, ios::out | ios::binary);
     if (!fs.is_open())
     {
-        cerr << "Cannot open xml to save the model"<< endl;
+        cerr << "Cannot open binary file to save the model"<< endl;
         return false;
     }
     vector< vector<regressionTree> > cascadeFinal;
@@ -85,7 +117,7 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
         total_time += t;
         cout<<"Time Taken to fit Cascade = "<< t/(getTickFrequency()*60) <<" min"<<endl;
     }
-    cout<<"Total training time = "<< t/(getTickFrequency()*60*60) <<" hrs"<<endl;
+    cout<<"Total training time = "<< total_time/(getTickFrequency()*60*60) <<" hrs"<<endl;
     writeModel(fs,cascadeFinal, pixelCoordinates);
     fs.close();
     displayresults2(samples);
@@ -185,7 +217,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
                 }
                 samples[currentCount].targetShape = dbIterator->second;
                 getRelativeShapefromMean(samples[currentCount], meanShape);
-                calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
+                //calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
                 if(samples[currentCount].currentShape.size() != 0)
                 {
                     firstCount = currentCount;
@@ -216,12 +248,15 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
                 }
                 for (unsigned long l = 0; l < samples[currentCount].targetShape.size(); ++l)
                 {
-                    samples[currentCount].currentShape[l].x = inter[l].x / (numSamples/10);
-                    samples[currentCount].currentShape[l].y = inter[l].y / (numSamples/10);
+                    if(numSamples/10 != 0)
+                    {
+                        samples[currentCount].currentShape[l].x = inter[l].x / (numSamples/10);
+                        samples[currentCount].currentShape[l].y = inter[l].y / (numSamples/10);
+                    }
                 }
                 if(samples[currentCount].currentShape.size() != 0)
                 {
-                    calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
+                    //calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
                     currentCount++;
                 }
             }
@@ -239,10 +274,10 @@ bool KazemiFaceAlignImpl::generateTestCoordinates(vector< vector<Point2f> >& pix
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
         vector<Point2f> testCoordinates;
-        RNG rng(time(0));
+        RNG rng(getTickCount());
         for (unsigned long j = 0; j < numTestCoordinates; ++j)
         {
-            testCoordinates.push_back(Point2f((float)rng.uniform(meanShapeBounds[0].x, meanShapeBounds[1].x), (float)rng.uniform(meanShapeBounds[0].y,meanShapeBounds[1].y)));
+            testCoordinates.push_back(Point2f(rng.uniform(meanShapeBounds[0].x, meanShapeBounds[1].x), rng.uniform(meanShapeBounds[0].y,meanShapeBounds[1].y)));
         }
         pixelCoordinates.push_back(testCoordinates);
     }

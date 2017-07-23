@@ -151,15 +151,15 @@ class KazemiFaceAlignImpl
 
         bool displayresults2(vector<trainSample>& samples);
         //@
-        vector< vector<Point2f> > getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
+        vector<Point2f> getFacialLandmarks(trainSample& sample, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates);
 
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
             numFaces = 1;
             numLandmarks = 194;
-            cascadeDepth = 10;
-            treeDepth = 4;
+            cascadeDepth = 15;
+            treeDepth = 5;
             numTreesperCascade = 500;
             learningRate = 0.1;
             oversamplingAmount = 20;

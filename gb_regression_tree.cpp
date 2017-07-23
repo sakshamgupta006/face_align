@@ -1,43 +1,36 @@
-/*M///////////////////////////////////////////////////////////////////////////////////////
-//
-//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
-//
-//  By downloading, copying, installing or using the software you agree to this license.
-//  If you do not agree to this license, do not download, install,
-//  copy or use the software.
-//
-//
-//                           License Agreement
-//                For Open Source Computer Vision Library
-//
-// Copyright (C) 2008-2013, Itseez Inc., all rights reserved.
-// Third party copyrights are property of their respective owners.
-//
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-//
-//   * Redistribution's of source code must retain the above copyright notice,
-//     this list of conditions and the following disclaimer.
-//
-//   * Redistribution's in binary form must reproduce the above copyright notice,
-//     this list of conditions and the following disclaimer in the documentation
-//     and/or other materials provided with the distribution.
-//
-//   * The name of Itseez Inc. may not be used to endorse or promote products
-//     derived from this software without specific prior written permission.
-//
-// This software is provided by the copyright holders and contributors "as is" and
-// any express or implied warranties, including, but not limited to, the implied
-// warranties of merchantability and fitness for a particular purpose are disclaimed.
-// In no event shall the copyright holders or contributors be liable for any direct,
-// indirect, incidental, special, exemplary, or consequential damages
-// (including, but not limited to, procurement of substitute goods or services;
-// loss of use, data, or profits; or business interruption) however caused
-// and on any theory of liability, whether in contract, strict liability,
-// or tort (including negligence or otherwise) arising in any way out of
-// the use of this software, even if advised of the possibility of such damage.
-//
-//M*/
+/*By downloading, copying, installing or using the software you agree to this license.
+If you do not agree to this license, do not download, install,
+copy or use the software.
+                          License Agreement
+               For Open Source Computer Vision Library
+                       (3-clause BSD License)
+Copyright (C) 2000-2016, Intel Corporation, all rights reserved.
+Copyright (C) 2009-2011, Willow Garage Inc., all rights reserved.
+Copyright (C) 2009-2016, NVIDIA Corporation, all rights reserved.
+Copyright (C) 2010-2013, Advanced Micro Devices, Inc., all rights reserved.
+Copyright (C) 2015-2016, OpenCV Foundation, all rights reserved.
+Copyright (C) 2015-2016, Itseez Inc., all rights reserved.
+Third party copyrights are property of their respective owners.
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+  * Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+  * Neither the names of the copyright holders nor the names of the contributors
+    may be used to endorse or promote products derived from this software
+    without specific prior written permission.
+This software is provided by the copyright holders and contributors "as is" and
+any express or implied warranties, including, but not limited to, the implied
+warranties of merchantability and fitness for a particular purpose are disclaimed.
+In no event shall copyright holders or contributors be liable for any direct,
+indirect, incidental, special, exemplary, or consequential damages
+(including, but not limited to, procurement of substitute goods or services;
+loss of use, data, or profits; or business interruption) however caused
+and on any theory of liability, whether in contract, strict liability,
+or tort (including negligence or otherwise) arising in any way out of
+the use of this software, even if advised of the possibility of such damage.*/
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -48,7 +41,56 @@
 using namespace std;
 using namespace cv;
 
-namespace cv{
+namespace cv
+{
+
+//Parallelization Inducing Functions
+class calcSumSample : public ParallelLoopBody
+{
+public:
+    calcSumSample (vector<trainSample>& samples, vector<Point2f>& sumOutput)
+        : _samples(samples), _sumOutput(sumOutput)
+    {
+    }
+
+    virtual void operator ()(const Range& range) const
+    {
+        for (unsigned long r = range.start; r < range.end; r++)
+        {
+            for (unsigned long i = 0; i < _samples[r].currentShape.size(); ++i)
+            {
+                _sumOutput[i] = _samples[r].currentShape[i] + _sumOutput[i];
+            }
+        }
+    }
+
+private:
+    vector<trainSample>& _samples;
+    vector<Point2f>& _sumOutput;
+};
+
+class calcDiffSample : public ParallelLoopBody
+{
+public:
+    calcDiffSample (vector<trainSample>& samples)
+        : _samples(samples)
+    {
+    }
+
+    virtual void operator ()(const Range& range) const
+    {
+        for (unsigned long r = range.start; r < range.end; r++)
+        {
+            for (unsigned long i = 0; i < _samples[r].targetShape.size(); ++i)
+            {
+                _samples[r].residualShape[i] = _samples[r].targetShape[i] - _samples[r].currentShape[i];
+            }
+        }
+    }
+
+private:
+    vector<trainSample>& _samples;
+};    
 
 double KazemiFaceAlignImpl::getDistance(Point2f first , Point2f second)
 {
@@ -153,13 +195,18 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     vector<Point2f> zerovector;
     zerovector.assign(samples[0].targetShape.size(), Point2f(0,0));
     vector< vector<Point2f> > sums(numSplitNodes*2 + 1 , zerovector);
+
     ////---------------------------------SCOPE OF THREADING---------------------------------------////
+    //Parallel approach
+    parallel_for_(Range(0, samples.size()), calcSumSample(samples, sums[0]));
+    parallel_for_(Range(0, samples.size()), calcDiffSample(samples));
+
     //Initialize Sum for the root node
-    for (unsigned long i = 0; i < samples.size(); i++)
-    {
-        calcDiff(samples[i].targetShape, samples[i].currentShape, samples[i].residualShape);
-        calcSum(samples[i].residualShape, sums[0], sums[0]);
-    }
+    // for (unsigned long i = 0; i < samples.size(); i++)
+    // {
+    //     calcDiff(samples[i].targetShape, samples[i].currentShape, samples[i].residualShape);
+    //     calcSum(samples[i].residualShape, sums[0], sums[0]);
+    // }
     //Iteratively generate Splits in the samples
     for (unsigned long int i = 0; i < numSplitNodes; i++)
     {
@@ -180,49 +227,32 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     for (unsigned long int i = 0; i < partition.size(); ++i)
     {
         unsigned long currentCount = partition[i].second - partition[i].first + 1;
-        /*for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-            calcSum(residualSum, onesvector, residualSum);
-        //Calculate Reciprocal
-        for (unsigned long k = 0; k < residualSum.size(); ++k)
-        {
-            if(residualSum[k].x != 0)
-                residualSum[k].x  = 1 / residualSum[k].x;
-            else
-                residualSum[k].x = 0;
-            if(residualSum[k].y != 0)
-                residualSum[k].y = 1 / residualSum[k].y;
-            else
-                residualSum[k].y = 0;
-        }*/
-        //End Reciprocal
         if(partition[i].first != partition[i].second)
             {
                 tree.leaves[i] = sums[numSplitNodes+i];
                 for (unsigned long l = 0; l < tree.leaves[i].size(); ++l)
                 {
-                    //cout<<"Initial tree value"<<tree.leaves[i][l]<<endl;
                     tree.leaves[i][l].x = ( learningRate * tree.leaves[i][l].x ) / currentCount;
                     tree.leaves[i][l].y = (learningRate * tree.leaves[i][l].y ) / currentCount;
-                    //cout<<tree.leaves[i][l]<<endl;
                 }
-
-                //calcMul(residualSum,tree.leaves[i], tree.leaves[i]); // To be fully implemented in case of missing labels
             }
         else
             tree.leaves[i].assign(samples[0].targetShape.size(), Point2f(0,0));
         vector<Point2f> tempvector;
         tempvector.resize(samples[0].targetShape.size());
-        for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
-        {
-            calcSum(samples[j].currentShape, tree.leaves[i], samples[j].currentShape);
-            //calcDiff(samples[j].targetShape, tempvector, samples[j].currentShape);
-            //To be fully implemented in case of missing labels
-            /* for (unsigned long m = 0; m < samples[j].currentShape.size(); ++m)
-            {
-                if(samples[j].residualShape[m].x == 0 &&  samples[j].residualShape[m].y == 0)
-                    samples[j].targetShape[m] = samples[j].currentShape[m];
-            } */
-        }
+
+        parallel_for_(Range(partition[i].first,partition[i].second), calcSumSample(samples, tree.leaves[i]));
+        // for (unsigned long j = partition[i].first; j < partition[i].second; ++j)
+        // {
+        //     calcSum(samples[j].currentShape, tree.leaves[i], samples[j].currentShape);
+        //     //calcDiff(samples[j].targetShape, tempvector, samples[j].currentShape);
+        //     //To be fully implemented in case of missing labels
+        //     /* for (unsigned long m = 0; m < samples[j].currentShape.size(); ++m)
+        //     {
+        //         if(samples[j].residualShape[m].x == 0 &&  samples[j].residualShape[m].y == 0)
+        //             samples[j].targetShape[m] = samples[j].currentShape[m];
+        //     }*/
+        // }
     }
     return tree;
 }
@@ -256,5 +286,6 @@ unsigned long KazemiFaceAlignImpl::partitionSamples(splitFeature split, vector<t
     }
     return initial;
 }
+
 
 }
