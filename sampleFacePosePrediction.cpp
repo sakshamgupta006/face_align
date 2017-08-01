@@ -98,8 +98,15 @@ int main(int argc, const char** argv)
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
     predict.calcMeanShapeBounds();
     cout<<"Model Loaded"<<endl;
-    vector< vector<Point2f> > resultLandmarks;
-    resultLandmarks = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+    trainSample sample;
+    sample.img = image;
+    vector<Rect> faces = predict.faceDetector(sample.img, cascade);
+    vector<Point2f> resultLandmarks;
+    cout<<"Meanshape size"<<predict.meanShape.size()<<endl;
+    sample.currentShape = predict.meanShape;
+    resultLandmarks = predict.getFacialLandmarks(sample, forests, pixelCoordinates);
+    vector< vector<Point2f> > resultLandmarks2;
+    resultLandmarks2 = predict.getFacialLandmarks2(image, forests, pixelCoordinates, cascade);
 
     return 0;
 }

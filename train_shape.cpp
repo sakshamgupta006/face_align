@@ -152,12 +152,16 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
         //|CASCADE_FIND_BIGGEST_OBJECT,
         //|CASCADE_DO_ROUGH_SEARCH
         |CASCADE_SCALE_IMAGE,
-        Size(100, 100) );
+        Size(200, 200) );
     numFaces = faces.size();
     for (int i = 0; i < numFaces; ++i)
     {
+        if((faces[i].x - image.rows/20) > 0)
+            faces[i].x -= image.rows/20;
+        if((faces[i].y - image.cols/20) > 0)
+            faces[i].y -+ image.cols/20;
         faces[i].width += image.rows/20;
-        faces[i].height += image.cols/10;
+        faces[i].height += image.cols/20;
     }
     // for ( size_t i = 0; i < faces.size(); i++ )
     // {
@@ -167,6 +171,8 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     //     rectangle( image, cvPoint(cvRound(r.x*scale), cvRound(r.y*scale)),
     //                    cvPoint(cvRound((r.x + r.width-1)*scale), cvRound((r.y + r.height-1)*scale)),
     //                    color, 3, 8, 0);
+    //     imshow("face",image);
+    //     waitKey(0);
     // }
     return faces;
 }

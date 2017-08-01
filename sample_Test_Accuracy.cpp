@@ -20,7 +20,7 @@ int main(int argc, const char** argv)
     string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../../../../data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
+            "{cascade | ../../opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
             "{path | ../data/test/ | }"
             "{poseTree| 194_landmarks_face_align.dat |}"
             "{@filename| ../data/train/213033657_1.jpg |}"
@@ -62,19 +62,29 @@ int main(int argc, const char** argv)
     cout<<"Model Loaded"<<endl;
     predict.readAnnotationList(names, path_prefix);
     predict.readtxt(names, landmarks, path_prefix);
+    double total_error = 0;
+    int count = 1 ;
     for (unordered_map<string, vector<Point2f> >::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
     {
+        cout<<"Finding on "<<count<<endl;
         trainSample sample;
         sample.img = predict.getImage((*it).first, path_prefix);
         vector<Rect> faces = predict.faceDetector(sample.img, cascade);
         vector< vector<Point2f> > resultLandmarks;
-        for (int i = 0; i < faces.size(); ++i)
-        {
-            vector<Rect> temp(1,faces[i]);
-            sample.rect = temp;
-            resultLandmarks.push_back(predict.getFacialLandmarks(sample, forests, pixelCoordinates));
+        double error_current = 0;
+        if(faces.size() == 1)
+        {   
+            sample.rect = faces;
+            sample.targetShape = (*it).second;
+            sample.currentShape = predict.getFacialLandmarks(sample, forests, pixelCoordinates);
+            for(unsigned long j = 0; j < sample.currentShape.size(); j++)
+            {
+                error_current += predict.getDistance(sample.targetShape[j], sample.currentShape[j]);
+            }
+            total_error += error_current / sample.currentShape.size();
+            count++;
         }
     }
-
+    cout<<"Total Error "<<total_error/landmarks.size()<<endl;
     return 0;
 }
