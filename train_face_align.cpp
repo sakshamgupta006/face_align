@@ -50,147 +50,58 @@ using namespace cv;
 
 #define numSamples 20
 
-namespace cv
-{
-
-//Parallelization Functions
-/*class calcRelPixels : public ParallelLoopBody , public KazemiFaceAlignImpl
-{
-public:
-    calcRelPixels (vector<trainSample>& samples, vector<Point2f>& pixelCoordinates)
-        : _samples(samples), _pixelCoordinates(pixelCoordinates)
-    {
-    }
-
-    virtual void operator ()(const Range& range) const
-    {
-        for (unsigned long r = range.start; r < range.end; r++)
-        {
-            double sampleShapeRectminx, sampleShapeRectminy, sampleShapeRectmaxx, sampleShapeRectmaxy;
-            double sampleX[_samples[r].currentShape.size()] , sampleY[_samples[r].currentShape.size()];
-            int pointcount=0;
-            for (vector<Point2f>::iterator it = _samples[r].currentShape.begin(); it != _samples[r].currentShape.end(); ++it)
-            {
-                sampleX[pointcount] = (*it).x;
-                sampleY[pointcount] = (*it).y;
-                pointcount++;
-            }
-            sampleShapeRectminx = *min_element(sampleX , sampleX + _samples[r].currentShape.size());
-            sampleShapeRectmaxx = *max_element(sampleX , sampleX + _samples[r].currentShape.size());
-            sampleShapeRectminy = *min_element(sampleY , sampleY + _samples[r].currentShape.size());
-            sampleShapeRectmaxy = *max_element(sampleY , sampleY + _samples[r].currentShape.size());
-            Point2f sampleRefPoints[3];
-            sampleRefPoints[0] = Point2f(sampleShapeRectminx , sampleShapeRectminy );
-            sampleRefPoints[1] = Point2f( sampleShapeRectmaxx, sampleShapeRectminy );
-            sampleRefPoints[2] = Point2f( sampleShapeRectminx, sampleShapeRectmaxy );
-            Mat affineMatrix = getAffineTransform( meanShapeReferencePoints, sampleRefPoints);
-            for(unsigned long i = 0; i < _pixelCoordinates.size(); i++)
-            {
-                unsigned long in = findNearestLandmark(_pixelCoordinates[i]);
-                Point2f point = _pixelCoordinates[i] - meanShape[in];
-                Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 1);
-                Mat resultAffineMat = affineMatrix * fiducialPointMat;
-                point.x = float(abs(resultAffineMat.at<double>(0,0)));
-                point.y = float(abs(resultAffineMat.at<double>(1,0)));
-                _pixelCoordinates[i] = point + _samples[r].currentShape[in];
-            }
-            return true;
-        }
-    }
-
-private:
-    vector<trainSample>& _samples;
-    vector<Point2f>& _pixelCoordinates;
-};*/
+namespace cv{
 
 Mat KazemiFaceAlignImpl::normalizing_tform(Rect& r)
 {
     Point2f from_points[3], to_points[3];
-    to_points[0] = Point2f(0,0); from_points[0] = Point2f(r.x, r.y);
-    to_points[1] = Point2f(1,0); from_points[1] = Point2f(r.x + r.width, r.y);
-    to_points[2] = Point2f(1,1); from_points[2] = Point2f(r.x + r.width, r.y + r.height);
+    to_points[0] = Point2f(0,0);
+    from_points[0] = Point2f(r.x, r.y);
+    to_points[1] = Point2f(1,0);
+    from_points[1] = Point2f(r.x + r.width, r.y);
+    to_points[2] = Point2f(1,1);
+    from_points[2] = Point2f(r.x + r.width, r.y + r.height);
     return getAffineTransform(from_points, to_points);
 }
 
 Mat KazemiFaceAlignImpl::unnormalizing_tform(Rect& r)
 {
     Point2f from_points[3], to_points[3];
-    from_points[0] = Point2f(0,0); to_points[0] = Point2f(r.x, r.y);
-    from_points[1] = Point2f(1,0); to_points[1] = Point2f(r.x + r.width, r.y);
-    from_points[2] = Point2f(1,1); to_points[2] = Point2f(r.x + r.width, r.y + r.height);
+    from_points[0] = Point2f(0,0);
+    to_points[0] = Point2f(r.x, r.y);
+    from_points[1] = Point2f(1,0);
+    to_points[1] = Point2f(r.x + r.width, r.y);
+    from_points[2] = Point2f(1,1);
+    to_points[2] = Point2f(r.x + r.width, r.y + r.height);
     return getAffineTransform(from_points, to_points);
 }
 
-unsigned long KazemiFaceAlignImpl::nearest_shape_point(Point2f& pt)
+void KazemiFaceAlignImpl::savesample(trainSample samples, int no)
 {
-    float best_dist = std::numeric_limits<float>::infinity();
-    unsigned long best_idx = 0;
-    for (unsigned long j = 0; j < meanShape.size(); ++j)
-    {
-        float dist = sqrt(pow((meanShape[j].x - pt.x), 2) + pow((meanShape[j].y - pt.y), 2));
-        if( dist < best_dist)
+ Mat image = samples.img.clone();
+    Mat unorm_tform  = unnormalizing_tform(samples.rect[0]);
+    vector<Point2f> some(numLandmarks, Point2f(0.,0.));
+        for (int j = 0; j < samples.currentShape.size(); ++j)
         {
-            best_dist = dist;
-            best_idx = j;
+            Mat temp = (Mat_<double>(3,1)<< samples.currentShape[j].x , samples.currentShape[j].y , 1);
+            Mat res = unorm_tform * temp;
+            some[j].x = res.at<double>(0,0);
+            some[j].y = res.at<double>(1,0);
         }
-    }
-return best_idx;
-}
-
-
-void KazemiFaceAlignImpl::create_shape_relative_encoding(vector<Point2f>& pixelCoordinates, vector<unsigned long>& anchor_idx, vector<Point2f>& deltas)
-{
-    anchor_idx.resize(pixelCoordinates.size());
-    deltas.resize(pixelCoordinates.size());
-    for (unsigned long i = 0; i < pixelCoordinates.size(); ++i)
+    for (int j = 0; j < samples.targetShape.size() ; ++j)
     {
-        anchor_idx[i] = nearest_shape_point(pixelCoordinates[i]);
-        deltas[i] = pixelCoordinates[i] - Point2f(meanShape[anchor_idx[i]]);
-    }
+        circle(image, Point(some[j]), 2, Scalar(255,0,0), -1 );
+    }   
+    string saves = "res" + to_string(no) + ".png";
+    imwrite(saves, image);
 }
-
-void KazemiFaceAlignImpl::extract_feature_pixel_values(trainSample& sample, vector<unsigned long>& anchor_idx, vector<Point2f>& deltas, vector<Point2f>& pixelCoordinates)
-{
-    cout<<"Sample Current Shape"<<sample.currentShape.size()<<endl;
-    cout<<"MeanShape size"<<meanShape.size()<<endl;
-    Mat rigidmat = estimateRigidTransform(sample.currentShape, meanShape, false);
-    Mat unormalmat = unnormalizing_tform(sample.rect[0]);
-    sample.pixelValues.resize(deltas.size());
-    Mat image = sample.img.clone();
-    if(image.channels() != 1)
-        cvtColor(image,image,COLOR_BGR2GRAY);
-    for (unsigned long i = 0; i < deltas.size(); ++i)
-    {
-        Mat delatasmat = (Mat_<double>(3,1) << deltas[i].x , deltas[i].y , 1);
-        cout<<"Here"<<endl;
-        //cout<<rigidmat<<endl;
-        cout<<"Rigid Mat"<<rigidmat<<endl;
-        Mat muldeltas = (Mat_<double>(3,1)<< 0, 0, 1);
-        cout<<"Here"<<endl;
-        muldeltas = rigidmat*delatasmat;
-        cout<<"muldeltas"<<muldeltas<<endl;
-        cout<<"unnormal mat"<<unormalmat<<endl;
-        Mat muldeltas2 = (Mat_<double>(3,1)<< muldeltas.at<double>(0,0), muldeltas.at<double>(1,0), 1);
-        Mat pin = unormalmat * muldeltas2;
-        pin.at<double>(0,0) +=  sample.currentShape[anchor_idx[i]].x;
-        pin.at<double>(1,0) +=  sample.currentShape[anchor_idx[i]].y;
-        Point2f p ; p.x = pin.at<double>(0,0); p.y = pin.at<double>(1,0); 
-        if(p.x >=0 && p.x <= sample.img.rows && p.y >=0 && p.y <= sample.img.cols)
-            sample.pixelValues[i] = image.at<uchar>(p.x, p.y);
-        else
-            sample.pixelValues[i] = 0;
-    }
-}
-
 
 bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName)
 {
     double total_time = 0, t = 0;
-    vector<trainSample> samples(1);
+    vector<trainSample> samples;
     vector< vector<Point2f> > pixelCoordinates;
-    fillData2(samples, landmarks, path_prefix, cascade);
-    cout<<"Data filled"<<endl;
-    samples.erase(samples.begin(),samples.begin()+1);
+    fillData(samples, landmarks, path_prefix, cascade);
     generateTestCoordinates(pixelCoordinates);
     ofstream fs(outputName, ios::out | ios::binary);
     if (!fs.is_open())
@@ -199,35 +110,20 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
         return false;
     }
     vector< vector<regressionTree> > cascadeFinal;
-    //displayresults2(samples);
     cout<<"Training Started"<<endl;
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
         t = (double)getTickCount();
-        // vector<Point2f> pixrel(pixelCoordinates[i].size());
-        // pixrel = pixelCoordinates[i];
-        // //parallel_for_(Range(0, samples.size()), calcRelPixels(samples, pixrel));
-        // for (unsigned long j = 0; j < samples.size(); ++j)
-        // {
-        //     calcRelativePixels(samples[j].currentShape,pixrel);
-        //     extractPixelValues(samples[j],pixrel);
-        // }
-
-        ////EXPERIMENTAL////
-        vector<unsigned long> anchor_idx;
-        vector<Point2f> deltas;
-        cout<<"Before shape relative"<<endl;
-        create_shape_relative_encoding(pixelCoordinates[i], anchor_idx, deltas);
-        cout<<"Created Shape relative encoding"<<endl;
         for (unsigned long j = 0; j < samples.size(); ++j)
         {
-            extract_feature_pixel_values(samples[j], anchor_idx, deltas, pixelCoordinates[i]);
+            vector<Point2f> pixrel(pixelCoordinates[i].size());
+            pixrel = pixelCoordinates[i];
+            calcRelativePixels(samples[j].currentShape,pixrel);
+            extractPixelValues(samples[j],pixrel);
         }
-        cout<<"Feature pixel values extracted"<<endl;
         vector<regressionTree> forest = gradientBoosting(samples, pixelCoordinates[i]);
         cascadeFinal.push_back(forest);
         cout<<"Fitted "<< i + 1 <<"th regressor"<<endl;
-        //writeCascadexml(fs2, forest);
         t = (double)getTickCount() - t;
         total_time += t;
         cout<<"Time Taken to fit Cascade = "<< t/(getTickFrequency()*60) <<" min"<<endl;
@@ -235,7 +131,101 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
     cout<<"Total training time = "<< total_time/(getTickFrequency()*60*60) <<" hrs"<<endl;
     writeModel(fs,cascadeFinal, pixelCoordinates);
     fs.close();
-    displayresults2(samples);
+    return true;
+}
+
+bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
+                                    string path_prefix, CascadeClassifier& cascade)
+{   cout<<"Inside filldata"<<endl;
+    meanShape.resize(numLandmarks);
+    unsigned long currentCount = 0;
+    for (unordered_map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
+            dbIterator != landmarks.end(); ++dbIterator)
+    {   
+        if(currentCount > numSamples)
+            break;
+        trainSample sample;
+        sample.img =  imread(dbIterator->first);//getImage(dbIterator->first,path_prefix);
+        scaleData(dbIterator->second, sample.img,  Size(460,460));
+        sample.rect = faceDetector(sample.img, cascade);
+        if(sample.rect.size() != 1)
+        {
+            continue;
+        }
+        Mat normMat = normalizing_tform(sample.rect[0]);
+        sample.targetShape = dbIterator->second;
+        for (unsigned long j = 0; j < sample.targetShape.size(); ++j)
+        {
+            Mat targetshapepoint = (Mat_<double>(3,1) << (sample.targetShape[j].x) , (sample.targetShape[j].y) , 1);
+            Mat multargetshapepoint = normMat * targetshapepoint;
+            sample.targetShape[j].x = multargetshapepoint.at<double>(0,0);
+            sample.targetShape[j].y = multargetshapepoint.at<double>(1,0);
+        }
+        for (unsigned long j = 0; j < oversamplingAmount; ++j)
+            samples.push_back(sample);
+        calcSum(sample.targetShape, meanShape, meanShape);
+        currentCount++;
+    }
+    for (int i = 0; i < meanShape.size(); ++i)
+    {
+        meanShape[i].x /= currentCount;
+        meanShape[i].y /= currentCount;
+    }
+    calcMeanShapeBounds();
+    samples.erase(samples.begin(),samples.begin()+1);
+    for (unsigned long i = 0; i < samples.size(); ++i)
+    {
+        samples[i].currentShape.assign(meanShape.size(), Point2f(0.,0.));
+        samples[i].residualShape.resize(meanShape.size(), Point2f(0.,0.));
+        if(i%oversamplingAmount == 0)
+            samples[i].currentShape = meanShape;
+        else
+        {
+            double hits=0;
+            int count = 0;
+            for (int randomint = 0; randomint < numSamples/10; ++randomint)
+            {
+                    RNG number(getTickCount());
+                    unsigned long randomIndex = (unsigned long)number.uniform(0, currentCount*oversamplingAmount-1);
+                    while(randomIndex == 0)
+                    {
+                        randomIndex = (unsigned long)number.uniform(0, currentCount-1);
+                    }
+                    double alpha = number.uniform(0.,1.) + 0.1;
+                    for (unsigned long j = 0; j < meanShape.size(); ++j)
+                    {
+                        samples[i].currentShape[j].x += samples[randomIndex].targetShape[j].x;
+                        samples[i].currentShape[j].y += samples[randomIndex].targetShape[j].y;
+                        hits += alpha*1;
+                    }
+                    count++;
+            }
+            for (unsigned long l = 0; l < samples[i].currentShape.size(); ++l)
+            {
+                    if(hits != 0)
+                    {
+                        samples[i].currentShape[l].x /= count;
+                        samples[i].currentShape[l].y /= count;
+                    }
+            }
+        }
+    }
+    cout<<"Total Images Loaded -> "<<(currentCount-1) <<endl;
+    cout<<"Total Sample Size -> "<< samples.size() <<endl;
+    return true;
+}
+
+bool KazemiFaceAlignImpl::scaleData(vector<Point2f>& landmarks, Mat& image, Size s)
+{
+    float scalex,scaley;
+    scalex = s.width / image.cols;
+    scaley = s.height / image.rows;
+    resize(image, image, s);
+    for (vector<Point2f>::iterator it = landmarks.begin(); it != landmarks.end(); it++)
+    {
+        (*it).x *= scalex;
+        (*it).y *= scaley;
+    }
     return true;
 }
 
@@ -243,10 +233,20 @@ bool KazemiFaceAlignImpl::displayresults2(vector<trainSample>& samples)
 {
     for (int i = 0; i < samples.size(); ++i)
      {
+        vector<Point2f> temp1(samples[i].targetShape.size());
         Mat image = samples[i].img.clone();
+        Mat unorm_tform  = unnormalizing_tform(samples[i].rect[0]);
+        for (int j = 0; j < samples[i].currentShape.size(); ++j)
+        {
+            Mat temp = (Mat_<double>(3,1)<< samples[i].currentShape[j].x , samples[i].currentShape[j].y , 1);
+            Mat res = unorm_tform * temp;
+            temp1[j].x = res.at<double>(0,0);
+            temp1[j].y = res.at<double>(1,0);
+        }
+
         for (int j = 0; j < samples[i].currentShape.size() ; ++j)
         {
-            circle(image, Point(samples[i].currentShape[j]), 2, Scalar(255,0,0) ,-1);
+            circle(image, Point(temp1[j]), 5, Scalar(0,0,255) ,-1);
         }
         imshow("Results", image);
         waitKey(0);
@@ -257,230 +257,32 @@ bool KazemiFaceAlignImpl::displayresults2(vector<trainSample>& samples)
 bool KazemiFaceAlignImpl::displayresults(trainSample& samples)
 {
     Mat image = samples.img.clone();
+    Mat unorm_tform  = unnormalizing_tform(samples.rect[0]);
+    cout<<samples.rect[0]<<endl;
+    vector<Point2f> temp1;
+    temp1.resize(samples.currentShape.size());
+        for (int j = 0; j < samples.currentShape.size(); ++j)
+        {
+            Mat temp = (Mat_<double>(3,1)<< samples.currentShape[j].x , samples.currentShape[j].y , 1);
+            Mat res = unorm_tform * temp;
+            temp1[j].x = (float)(res.at<double>(0,0));
+            temp1[j].y = (float)(res.at<double>(1,0));
+        }
     for (int j = 0; j < samples.currentShape.size() ; ++j)
     {
-        circle(image, Point(samples.currentShape[j]), 2, Scalar(255,0,0), -1 );
+        circle(image, Point(temp1[j]), 5, Scalar(0,0,255), -1 );
     }
     imshow("Results", image);
     waitKey(0);
     return true;
 }
 
-void KazemiFaceAlignImpl::testnewImage(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade)
-{
-    vector< vector<Point2f> > resultPoints;
-    trainSample sample;
-    sample.img = image;
-    sample.rect = faceDetector(image, cascade);
-    //sample.currentShape = getRelativeShapetoMean(sample, meanShape);
-    getRelativeShapefromMean(sample, meanShape);
-    //displayresults(sample);
-        for (int i = 0; i < cascadeFinal.size() ; ++i)
-        {
-            vector<Point2f> pixel_relative = pixelCoordinates[i];
-            calcRelativePixels(sample.currentShape, pixel_relative);
-            extractPixelValues(sample, pixel_relative);
-            for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
-            {
-                unsigned long k =0 ;
-                while(k < cascadeFinal[i][j].split.size())
-                {
-                    if ((float)sample.pixelValues[cascadeFinal[i][j].split[k].idx1] - (float)sample.pixelValues[cascadeFinal[i][j].split[k].idx2] > cascadeFinal[i][j].split[k].thresh)
-                        k = leftChild(k);
-                    else
-                        k = rightChild(k);
-                }
-                k = k - cascadeFinal[i][j].split.size();
-                vector<Point2f> temp;
-                temp.resize(sample.currentShape.size());
-                for (unsigned long l = 0; l < sample.currentShape.size(); ++l)
-                {
-                    temp[l] = learningRate * cascadeFinal[i][j].leaves[k][l];
-                }
-                calcDiff(temp, sample.currentShape, sample.currentShape);
-            }
-        }
-    displayresults(sample);
-}
-
-bool KazemiFaceAlignImpl::fillData2(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
-                                    string path_prefix, CascadeClassifier& cascade)
-{   cout<<"Inside filldata"<<endl;
-    meanShape.resize(194);
-    unsigned long currentCount =0;
-    for (unordered_map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
-            dbIterator != landmarks.end(); ++dbIterator)
-    {   
-        if(currentCount > numSamples)
-            break;
-        trainSample sample;
-        sample.img =  getImage(dbIterator->first,path_prefix);
-        sample.rect = faceDetector(sample.img, cascade);
-        if(sample.rect.size() != 1)
-        {
-            continue;
-        }
-        Mat normMat = normalizing_tform(sample.rect[0]);
-        //cout<<normMat<<endl;
-        sample.targetShape = dbIterator->second;
-        for (unsigned long j = 0; j < samples[currentCount].targetShape.size(); ++j)
-        {
-            Mat targetshapepoint = (Mat_<double>(3,1) << samples[currentCount].targetShape[j].x , samples[currentCount].targetShape[j].y , 1);
-            Mat multargetshapepoint = normMat * targetshapepoint;
-            samples[currentCount].targetShape[j].x = multargetshapepoint.at<double>(0,0);
-            samples[currentCount].targetShape[j].y = multargetshapepoint.at<double>(1,0);
-            //cout<<"Target Shape "<<samples[currentCount].targetShape[j]<<endl;
-        }
-        for (unsigned long j = 0; j < oversamplingAmount; ++j)
-            samples.push_back(sample);
-        calcSum(samples[currentCount].targetShape, meanShape, meanShape);
-        currentCount++;
-        cout<<currentCount<<endl;
-    }
-    for (int i = 0; i < meanShape.size(); ++i)
-    {
-        meanShape[i].x /= currentCount;
-        meanShape[i].y /= currentCount;
-    }
-    calcMeanShapeBounds();
-    cout<<"Samples size"<<samples.size();
-    cout<<"MeanShape Bounds Calculate"<<endl;
-    for (unsigned long i = 1; i < samples.size(); ++i)
-    {
-        samples[i].currentShape.resize(meanShape.size());
-        samples[i].residualShape.resize(meanShape.size());
-        if((i-1)%oversamplingAmount == 0)
-            samples[i].currentShape = meanShape;
-        else
-        {
-            double hits=0;
-            for (int randomint = 0; randomint < numSamples/10; ++randomint)
-            {
-                    RNG number(getTickCount());
-                    unsigned long randomIndex = (unsigned long)number.uniform(0, currentCount-1);
-                    while(randomIndex == 0)
-                    {
-                        randomIndex = (unsigned long)number.uniform(0, currentCount-1);
-                    }
-                    double alpha = number.uniform(0.,1.) + 0.1;
-                    for (unsigned long j = 0; j < meanShape.size(); ++j)
-                    {
-                        samples[i].currentShape[j].x += alpha*samples[randomIndex].targetShape[j].x;
-                        samples[i].currentShape[j].y += alpha*samples[randomIndex].targetShape[j].y;
-                        hits += alpha*1;
-                    }
-            }
-            for (unsigned long l = 0; l < samples[currentCount].targetShape.size(); ++l)
-            {
-                    if(hits != 0)
-                    {
-                        samples[i].currentShape[l].x /= hits;
-                        samples[i].currentShape[l].y /= hits;
-                    }
-            }
-        }
-    }
-    cout<<"Sample size"<<samples.size()<<endl;
-    cout<<currentCount<<": Training Samples Loaded.."<<endl;
-    return true;
-}
-
-
-
-// bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
-//                                     string path_prefix, CascadeClassifier& cascade)
-// {
-//     unsigned long currentCount =0;
-//     samples.resize((numSamples + 1) * oversamplingAmount);
-//     int db = 0;
-//     for (unordered_map<string, vector<Point2f>>::iterator dbIterator = landmarks.begin();
-//             dbIterator != landmarks.end(); ++dbIterator)
-//     {
-//         unsigned int firstCount = 0;
-//         if(db > numSamples)
-//             break;
-//         for (unsigned long i = 0; i < oversamplingAmount; ++i)
-//         {
-//             if(i == 0)
-//             {
-//                 //Assuming the current Shape of each sample's first initialization to be mean shape
-//                 samples[currentCount].img = getImage(dbIterator->first,path_prefix);
-//                 samples[currentCount].rect = faceDetector(samples[currentCount].img, cascade);
-//                 if(samples[currentCount].rect.size() != 1)
-//                 {
-//                     samples.erase(samples.begin() + currentCount);
-//                     continue;
-//                 }
-//                 samples[currentCount].targetShape = dbIterator->second;
-//                 //getRelativeShapefromMean(samples[currentCount], meanShape);
-//                 //calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
-//                 samples[currentCount].residualShape.resize(samples[currentCount].targetShape.size());
-//                 Mat normMat = normalizing_tform(samples[currentCount].rect);
-//                 for (unsigned long j = 0; j < samples[currentCount].targetShape.size(); ++j)
-//                 {
-//                     samples[currentCount].targetShape[j].x = normMat * samples[currentCount].targetShape[j].x;
-//                     samples[currentCount].targetShape[j].y = normMat * samples[currentCount].targetShape[j].y;
-//                 }
-
-
-//                 if(samples[currentCount].currentShape.size() != 0)
-//                 {
-//                     firstCount = currentCount;
-//                     currentCount++;
-//                 }
-//             }
-//             else
-//             {
-//                 //Assign some random image from the training sample as current shape
-//                 samples[currentCount].img = samples[firstCount].img;
-//                 samples[currentCount].rect = samples[firstCount].rect;
-//                 if(samples[currentCount].rect.size() != 1)
-//                 {
-//                     samples.erase(samples.begin() + currentCount);
-//                     continue;
-//                 }
-//                 samples[currentCount].targetShape = samples[firstCount].targetShape;
-//                 vector<Point2f> inter(samples[currentCount].targetShape.size());
-//                 for (int randomint = 0; randomint < numSamples/10; ++randomint)
-//                 {
-//                     RNG number(getTickCount());
-//                     unsigned long randomIndex = (unsigned long)number.uniform(0, landmarks.size()-1);
-//                     unordered_map<string, vector<Point2f>>::iterator item = landmarks.begin();
-//                     advance(item, randomIndex);
-//                     samples[currentCount].currentShape = item->second;
-//                     getRelativeShape(samples[currentCount]);
-//                     calcSum(samples[currentCount].currentShape, inter, inter);
-//                 }
-//                 for (unsigned long l = 0; l < samples[currentCount].targetShape.size(); ++l)
-//                 {
-//                     if(numSamples/10 != 0)
-//                     {
-//                         samples[currentCount].currentShape[l].x = inter[l].x / (numSamples/10);
-//                         samples[currentCount].currentShape[l].y = inter[l].y / (numSamples/10);
-//                     }
-//                 }
-//                 if(samples[currentCount].currentShape.size() != 0)
-//                 {
-//                     samples[currentCount].residualShape.resize(samples[currentCount].targetShape.size());
-//                     //calcDiff(samples[currentCount].currentShape, samples[currentCount].targetShape, samples[currentCount].residualShape);
-//                     currentCount++;
-//                 }
-//             }
-//         }
-//     db++;
-//     }
-//     samples.erase(samples.begin()+currentCount-1, samples.end());
-//     cout<<"Sample size"<<samples.size()<<endl;
-//     cout<<currentCount<<": Training Samples Loaded.."<<endl;
-//     return true;
-// }
-
 bool KazemiFaceAlignImpl::generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates)
 {
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
         vector<Point2f> testCoordinates;
-        RNG rng(getTickCount());
+        RNG rng(time(0));
         for (unsigned long j = 0; j < numTestCoordinates; ++j)
         {
             testCoordinates.push_back(Point2f((float)rng.uniform(meanShapeBounds[0].x, meanShapeBounds[1].x), (float)rng.uniform(meanShapeBounds[0].y,meanShapeBounds[1].y)));
@@ -515,90 +317,37 @@ bool KazemiFaceAlignImpl::calcRelativePixels(vector<Point2f>& sample,vector<Poin
         CV_Error(Error::StsBadArg, errmsg);
         return false;
     }
-    double sampleShapeRectminx, sampleShapeRectminy, sampleShapeRectmaxx, sampleShapeRectmaxy;
-    double sampleX[sample.size()] , sampleY[sample.size()];
-    int pointcount=0;
-    for (vector<Point2f>::iterator it = sample.begin(); it != sample.end(); ++it)
+    Mat affineMatrix = estimateRigidTransform( sample, meanShape, false);
+    if(affineMatrix.empty())
     {
-        sampleX[pointcount] = (*it).x;
-        sampleY[pointcount] = (*it).y;
-        pointcount++;
+        double sampleShapeRectminx, sampleShapeRectminy, sampleShapeRectmaxx, sampleShapeRectmaxy;
+        double sampleX[sample.size()] , sampleY[sample.size()];
+        int pointcount=0;
+        for (vector<Point2f>::iterator it = sample.begin(); it != sample.end(); ++it)
+        {
+            sampleX[pointcount] = (*it).x;
+            sampleY[pointcount] = (*it).y;
+            pointcount++;
+        }
+        sampleShapeRectminx = *min_element(sampleX , sampleX + sample.size());
+        sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.size());
+        sampleShapeRectminy = *min_element(sampleY , sampleY + sample.size());
+        sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.size());
+        Point2f sampleRefPoints[3];
+        sampleRefPoints[0] = Point2f(sampleShapeRectminx , sampleShapeRectminy );
+        sampleRefPoints[1] = Point2f( sampleShapeRectmaxx, sampleShapeRectminy );
+        sampleRefPoints[2] = Point2f( sampleShapeRectminx, sampleShapeRectmaxy );
+        affineMatrix = getAffineTransform(sampleRefPoints, meanShapeReferencePoints);
     }
-    sampleShapeRectminx = *min_element(sampleX , sampleX + sample.size());
-    sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.size());
-    sampleShapeRectminy = *min_element(sampleY , sampleY + sample.size());
-    sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.size());
-    Point2f sampleRefPoints[3];
-    sampleRefPoints[0] = Point2f(sampleShapeRectminx , sampleShapeRectminy );
-    sampleRefPoints[1] = Point2f( sampleShapeRectmaxx, sampleShapeRectminy );
-    sampleRefPoints[2] = Point2f( sampleShapeRectminx, sampleShapeRectmaxy );
-    Mat affineMatrix = getAffineTransform( meanShapeReferencePoints, sampleRefPoints);
     for(unsigned long i=0;i<pixelCoordinates.size();i++)
     {
         unsigned long in = findNearestLandmark(pixelCoordinates[i]);
         Point2f point = pixelCoordinates[i] - meanShape[in];
-        Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 1);
+        Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 0);
         Mat resultAffineMat = affineMatrix * fiducialPointMat;
-        point.x = float(abs(resultAffineMat.at<double>(0,0)));
-        point.y = float(abs(resultAffineMat.at<double>(1,0)));
+        point.x = float((resultAffineMat.at<double>(0,0)));
+        point.y = float((resultAffineMat.at<double>(1,0)));
         pixelCoordinates[i] = point + sample[in];
-    }
-    return true;
-}
-
-bool KazemiFaceAlignImpl::getRelativeShape(trainSample& sample)
-{
-    if(sample.targetShape.size()!= sample.currentShape.size())
-    {
-        String error_message = "Shape Mismatch Encountered";
-        CV_Error(Error::StsBadArg, error_message);
-        return false;
-    }
-    double samplecurrentShapeRectminx, samplecurrentShapeRectminy, samplecurrentShapeRectmaxx, samplecurrentShapeRectmaxy;
-    double samplecurrentX[sample.currentShape.size()] , samplecurrentY[sample.currentShape.size()];
-    int pointcount=0;
-    for (vector<Point2f>::iterator it = sample.currentShape.begin(); it != sample.currentShape.end(); ++it)
-    {
-        samplecurrentX[pointcount] = (*it).x;
-        samplecurrentY[pointcount] = (*it).y;
-        pointcount++;
-    }
-    samplecurrentShapeRectminx = *min_element(samplecurrentX , samplecurrentX + sample.currentShape.size());
-    samplecurrentShapeRectmaxx = *max_element(samplecurrentX , samplecurrentX + sample.currentShape.size());
-    samplecurrentShapeRectminy = *min_element(samplecurrentY , samplecurrentY + sample.currentShape.size());
-    samplecurrentShapeRectmaxy = *max_element(samplecurrentY , samplecurrentY + sample.currentShape.size());
-    Point2f samplecurrentRefPoints[3];
-    samplecurrentRefPoints[0] = Point2f( samplecurrentShapeRectminx , samplecurrentShapeRectminy );
-    samplecurrentRefPoints[1] = Point2f( samplecurrentShapeRectmaxx, samplecurrentShapeRectminy );
-    samplecurrentRefPoints[2] = Point2f( samplecurrentShapeRectminx, samplecurrentShapeRectmaxy );
-
-    double sampletargetShapeRectminx, sampletargetShapeRectminy, sampletargetShapeRectmaxx, sampletargetShapeRectmaxy;
-    double sampletargetX[sample.targetShape.size()] , sampletargetY[sample.targetShape.size()];
-    int pointcount2=0;
-    for (vector<Point2f>::iterator it = sample.targetShape.begin(); it != sample.targetShape.end(); ++it)
-    {
-        sampletargetX[pointcount2] = (*it).x;
-        sampletargetY[pointcount2] = (*it).y;
-        pointcount2++;
-    }
-    sampletargetShapeRectminx = *min_element(sampletargetX , sampletargetX + sample.targetShape.size());
-    sampletargetShapeRectmaxx = *max_element(sampletargetX , sampletargetX + sample.targetShape.size());
-    sampletargetShapeRectminy = *min_element(sampletargetY , sampletargetY + sample.targetShape.size());
-    sampletargetShapeRectmaxy = *max_element(sampletargetY , sampletargetY + sample.targetShape.size());
-    Point2f sampletargetRefPoints[3];
-    sampletargetRefPoints[0] = Point2f( sampletargetShapeRectminx , sampletargetShapeRectminy );
-    sampletargetRefPoints[1] = Point2f( sampletargetShapeRectmaxx, sampletargetShapeRectminy );
-    sampletargetRefPoints[2] = Point2f( sampletargetShapeRectminx, sampletargetShapeRectmaxy );
-
-    Mat affineMatrix = getAffineTransform( samplecurrentRefPoints, sampletargetRefPoints );
-    for (vector<Point2f>::iterator it = sample.currentShape.begin(); it !=sample.currentShape.end(); it++)
-    {
-        Point2f point = (*it);
-        Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 1);
-        Mat resultAffineMat = affineMatrix * fiducialPointMat;
-        point.x = float(abs(resultAffineMat.at<double>(0,0)));
-        point.y = float(abs(resultAffineMat.at<double>(1,0)));
-        (*it) = point;
     }
     return true;
 }

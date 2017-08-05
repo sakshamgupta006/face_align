@@ -43,6 +43,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "train_shape.hpp"
+#include "opencv2/videoio.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -60,10 +61,10 @@ int main(int argc, const char** argv)
     string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../../../../data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
-            "{path | ../data/train/ | }"
+            "{cascade | /home/cooper/gsoc/opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
+            "{path | ../data/300wcropped/ | }"
             "{poseTree| 194_landmarks_face_align.dat |}"
-            "{@filename| ../data/train/213033657_1.jpg |}"
+            "{@filename| ../data/300wcropped/outdoor_292.png |}"
         );
     if(parser.has("help"))
     {
@@ -98,15 +99,13 @@ int main(int argc, const char** argv)
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
     predict.calcMeanShapeBounds();
     cout<<"Model Loaded"<<endl;
-    trainSample sample;
-    sample.img = image;
-    vector<Rect> faces = predict.faceDetector(sample.img, cascade);
-    vector<Point2f> resultLandmarks;
-    cout<<"Meanshape size"<<predict.meanShape.size()<<endl;
-    sample.currentShape = predict.meanShape;
-    resultLandmarks = predict.getFacialLandmarks(sample, forests, pixelCoordinates);
-    vector< vector<Point2f> > resultLandmarks2;
-    resultLandmarks2 = predict.getFacialLandmarks2(image, forests, pixelCoordinates, cascade);
-
+    vector< vector<Point2f> > resultLandmarks;
+    //VideoCapture cap(0);
+    // while(1)
+    // {   
+       // cap >> image;
+        predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+      //  waitKey(0) ;//>= 0) break;
+    //}
     return 0;
 }

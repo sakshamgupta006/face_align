@@ -44,7 +44,6 @@
 #include "opencv2/core.hpp"
 #include "opencv2/objdetect.hpp"
 #include "opencv2/video/tracking.hpp"
-
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -109,17 +108,11 @@ class KazemiFaceAlignImpl
         bool readAnnotationList(vector<cv::String>& l, string annotation_path_prefix);
         /*@Parse the txt file to extract image and its annotations*/
         bool readtxt(vector<cv::String>& filepath, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
-        //@ Extracts Mean Shape from the given dataset
-        bool extractMeanShape(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix,CascadeClassifier& cascade);
         //@ Applies Haar based facedetectorl
         vector<Rect> faceDetector(Mat image,CascadeClassifier& cascade);
         //@ return an image
         Mat getImage(string imgpath,string path_prefix);
         //@ Gives initial fiducial Points respective to the mean shape
-        bool getInitialShape(Mat& image, CascadeClassifier& cascade);
-        //@ Reads MeanShape into a vector
-        bool readMeanShape();
-        //@
         bool calcMeanShapeBounds();
         //@ Calculate distance between given pixel co-ordinates
         double getDistance(Point2f first , Point2f second);
@@ -142,24 +135,18 @@ class KazemiFaceAlignImpl
 
         bool displayresults(trainSample& samples);
 
-        void testnewImage(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
-
-        bool getRelativeShapetoMean(trainSample& sample, vector<Point2f>& landmarks);
-
         //@ Prediction functions
         bool loadTrainedModel(ifstream& fs, vector< vector<regressionTree> >& forest, vector< vector<Point2f> >& pixelCoordinates);
 
-        bool getRelativeShape(trainSample& sample);
-
         bool displayresults2(vector<trainSample>& samples);
         //@
-        vector<Point2f> getFacialLandmarks(trainSample& sample, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates);
+        vector< vector<Point2f> > getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
 
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
         {
             numFaces = 1;
-            numLandmarks = 194;
+            numLandmarks = 68;
             cascadeDepth = 10;
             treeDepth = 5;
             numTreesperCascade = 500;
@@ -188,40 +175,38 @@ class KazemiFaceAlignImpl
         //@Intitiates the training of Cascade
         bool trainCascade(std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix, CascadeClassifier& cascade, string outputName);
         //@
-        bool getRelativeShapefromMean(trainSample& sample, vector<Point2f>& landmarks);
-        //@
-        bool fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
-                       string path_prefix, CascadeClassifier& cascade);
-        //@
         unsigned int findNearestLandmark(Point2f& pixelValue);
+        
         bool calcRelativePixels(vector<Point2f>& sample,vector<Point2f>& pixel_coordinates);
         //@
         bool generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates);
-        vector< vector<Point2f> > getFacialLandmarks2(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
-
         
-        unsigned long nearest_shape_point(Point2f& pt);
-        bool fillData2(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
-                                    string path_prefix, CascadeClassifier& cascade);
         Mat normalizing_tform(Rect& r);
 
         Mat unnormalizing_tform(Rect& r);
-        void create_shape_relative_encoding(vector<Point2f>& pixelCoordinates, vector<unsigned long>& anchor_idx, vector<Point2f>& deltas);
-        void extract_feature_pixel_values(trainSample& sample, vector<unsigned long>& anchor_idx, vector<Point2f>& deltas, vector<Point2f>& pixelCoordinates);
+        
+        unsigned long nearest_shape_point(Point2f& pt);
+        
+        void savesample(trainSample samples, int no);
+        
+        bool fillData(vector<trainSample>& samples,std::unordered_map<string, vector<Point2f>>& landmarks,
+                                    string path_prefix, CascadeClassifier& cascade);
+        bool scaleData( vector<Point2f>& trainlandmarks,Mat& trainimages ,Size s);
+        
+        bool readnewdataset(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
+
 
         void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
         void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);
         void writeLeafxml( FileStorage& fs, vector< vector<Point2f> >& leaves);
         void writeSplitxml(FileStorage& fs, vector<splitFeature>& split);
-        Point2f meanShapeReferencePoints[3];
-        vector<Point2f> meanShape;
-        vector<Point2f> meanShapeBounds;
-        int numFeature;
-        float lambda;
         unsigned long numTestSplits;
     private:
         int numFaces;
         int numLandmarks;
+        vector<Point2f> meanShape;
+        vector<Point2f> meanShapeBounds;
+        Point2f meanShapeReferencePoints[3];
         vector< vector<Point2f> > initialShape;
         unsigned long cascadeDepth;
         unsigned long treeDepth;
@@ -229,7 +214,9 @@ class KazemiFaceAlignImpl
         float learningRate;
         unsigned long oversamplingAmount;
         unsigned long feature_pool_size;
+        float lambda;
         unsigned long numTestCoordinates;
+        int numFeature;
 };
 
 }

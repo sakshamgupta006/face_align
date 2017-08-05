@@ -24,8 +24,8 @@ int main(int argc, const char** argv )
         string path_prefix;
         cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../../../../data/haarcascades/haarcascade_frontalface_alt.xml|}"
-            "{path | ../data/train/ | }"
+            "{cascade | /home/cooper/gsoc/opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"
+            "{path | ../data/300wcropped/ | }"
             "{meanshape | |}"
             "{@filename| 194_landmarks_face_align.dat |}"
         );
@@ -53,13 +53,7 @@ int main(int argc, const char** argv )
             return 0;
         }
         KazemiFaceAlignImpl train;
-        train.readAnnotationList(names, path_prefix);
-        train.readtxt(names, landmarks,path_prefix);
-        if(calcmeanshape)
-        {
-            train.extractMeanShape(landmarks, path_prefix,cascade);
-        }
-        //train.readMeanShape();
+        train.readnewdataset(names, landmarks, path_prefix);
         train.trainCascade(landmarks, path_prefix, cascade, outputName);
         cout<<"Training Complete"<<endl;
 return 0;

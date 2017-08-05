@@ -45,7 +45,6 @@ int main(int argc, const char** argv)
         parser.printErrors();
         return 0;
     }
-    KazemiFaceAlignImpl predict;
     ifstream fs(poseTree, ios::binary);
     if(!fs.is_open())
     {
@@ -53,15 +52,14 @@ int main(int argc, const char** argv)
         help();
         return 1;
     }
+    KazemiFaceAlignImpl accuracy;
     vector< vector<regressionTree> > forests;
     vector<cv::String> names;
     std::unordered_map<string, vector<Point2f>> landmarks;
     vector< vector<Point2f> > pixelCoordinates;
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
-    predict.calcMeanShapeBounds();
     cout<<"Model Loaded"<<endl;
-    predict.readAnnotationList(names, path_prefix);
-    predict.readtxt(names, landmarks, path_prefix);
+    train.readnewdataset(names, landmarks, path_prefix);
     double total_error = 0;
     int count = 1 ;
     for (unordered_map<string, vector<Point2f> >::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
