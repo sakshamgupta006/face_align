@@ -96,10 +96,17 @@ bool KazemiFaceAlignImpl::readAnnotationList(vector<cv::String>& l, string annot
 bool KazemiFaceAlignImpl::readnewdataset(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix)
 {
     vector<cv::String> filenames;
+    vector<cv::String> files_png;
     string annotationPath = path_prefix + "*.png";
+    string annotationPath3 = path_prefix + "*.jpg";
     string annotationPath2 = path_prefix + "*.pts";
-    glob(annotationPath,l,false);
+    //glob(annotationPath3,l,false);
     glob(annotationPath2,filenames,false);
+    glob(annotationPath,files_png,false);
+    for (int i = 0; i < files_png.size(); ++i)
+    {
+        l.push_back(files_png[i]);
+    }
     vector<Point2f> temp;
     string s, tok, randomstring;
     vector<string> coordinates;
@@ -176,7 +183,7 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     Mat gray;
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
-    cascade.detectMultiScale( gray, faces, 1.1, 3, 0 | CASCADE_SCALE_IMAGE, Size(100, 100) );
+    cascade.detectMultiScale( gray, faces,1.1, 3, 0 |CASCADE_SCALE_IMAGE,Size(100, 100) );
     numFaces = faces.size();
     return faces;
 }
@@ -184,34 +191,6 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
 Mat KazemiFaceAlignImpl::getImage(string imgpath, string path_prefix)
 {
     return imread(path_prefix + imgpath + ".jpg");
-}
-
-bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f>& pixelCoordinates)
-{
-    vector<Point2f> pixels(pixelCoordinates.size());
-    Mat unormmat = unnormalizing_tform(sample.rect[0]);
-    for(unsigned long i=0;i<pixelCoordinates.size();i++)
-    {
-        Mat fiducialPointMat = (Mat_<double>(3,1) << pixelCoordinates[i].x, pixelCoordinates[i].y, 1);
-        Mat resultAffineMat = unormmat * fiducialPointMat;
-        pixels[i].x = float((resultAffineMat.at<double>(0,0)));
-        pixels[i].y = float((resultAffineMat.at<double>(1,0)));
-    }
-    Mat image = sample.img;
-    sample.pixelValues.resize(pixelCoordinates.size());
-    if(image.channels() != 1)
-        cvtColor(image,image,COLOR_BGR2GRAY);
-    for (unsigned int i = 0; i < pixelCoordinates.size(); ++i)
-    {
-        if(pixels[i].x < image.rows && pixels[i].y < image.cols)
-        {
-            sample.pixelValues[i] = (int)image.at<uchar>(pixels[i].x, pixels[i].y);
-        }
-        else
-            sample.pixelValues[i] = (int)image.at<uchar>(0,0);   
-
-    }
-    return true;
 }
 
 bool KazemiFaceAlignImpl::calcDiff(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)

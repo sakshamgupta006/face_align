@@ -194,8 +194,9 @@ class KazemiFaceAlignImpl
         bool scaleData( vector<Point2f>& trainlandmarks,Mat& trainimages ,Size s);
         
         bool readnewdataset(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
+        bool displayresultstarget2(vector<trainSample>& samples);
 
-
+        double getInterocularDistance (vector<Point2f>& currentShape);
         void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
         void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);
         void writeLeafxml( FileStorage& fs, vector< vector<Point2f> >& leaves);

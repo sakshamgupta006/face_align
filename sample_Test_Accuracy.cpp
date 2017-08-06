@@ -8,6 +8,8 @@
 using namespace std;
 using namespace cv;
 
+#define numSamples 40
+
 static void help()
 {
     cout << "To be written near code completion"<<endl;
@@ -20,8 +22,8 @@ int main(int argc, const char** argv)
     string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../../opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
-            "{path | ../data/test/ | }"
+            "{cascade | ../../../opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
+            "{path | ../data/300wcropped/ | }"
             "{poseTree| 194_landmarks_face_align.dat |}"
             "{@filename| ../data/train/213033657_1.jpg |}"
         );
@@ -57,32 +59,47 @@ int main(int argc, const char** argv)
     vector<cv::String> names;
     std::unordered_map<string, vector<Point2f>> landmarks;
     vector< vector<Point2f> > pixelCoordinates;
-    predict.loadTrainedModel(fs, forests, pixelCoordinates);
+    accuracy.loadTrainedModel(fs, forests, pixelCoordinates);
     cout<<"Model Loaded"<<endl;
-    train.readnewdataset(names, landmarks, path_prefix);
+    accuracy.readnewdataset(names, landmarks, path_prefix);
     double total_error = 0;
-    int count = 1 ;
+    int count = 0;
     for (unordered_map<string, vector<Point2f> >::iterator it = landmarks.begin(); it != landmarks.end(); ++it)
     {
-        cout<<"Finding on "<<count<<endl;
+        if(count > numSamples)
+            break;
         trainSample sample;
-        sample.img = predict.getImage((*it).first, path_prefix);
-        vector<Rect> faces = predict.faceDetector(sample.img, cascade);
+        sample.img = imread(it->first);
+        sample.targetShape = it->second;
+        accuracy.scaleData(sample.targetShape, sample.img, Size(460,460));
+        sample.rect = accuracy.faceDetector(sample.img, cascade);
         vector< vector<Point2f> > resultLandmarks;
         double error_current = 0;
-        if(faces.size() == 1)
-        {   
-            sample.rect = faces;
-            sample.targetShape = (*it).second;
-            sample.currentShape = predict.getFacialLandmarks(sample, forests, pixelCoordinates);
+        if(sample.rect.size() == 1)
+        {
+            vector< vector<Point2f> > result;
+            result = accuracy.getFacialLandmarks(sample.img, forests, pixelCoordinates, cascade);
+            sample.currentShape = result[0];
+            Mat unorm_tform  = accuracy.unnormalizing_tform(sample.rect[0]);
+            for (int j = 0; j < sample.currentShape.size(); ++j)
+            {
+                Mat temp = (Mat_<double>(3,1)<< sample.currentShape[j].x , sample.currentShape[j].y , 1);
+                Mat res = unorm_tform * temp;
+                sample.currentShape[j].x = (float)(res.at<double>(0,0));
+                sample.currentShape[j].y = (float)(res.at<double>(1,0));
+            }
             for(unsigned long j = 0; j < sample.currentShape.size(); j++)
             {
-                error_current += predict.getDistance(sample.targetShape[j], sample.currentShape[j]);
+                error_current += accuracy.getDistance(sample.targetShape[j], sample.currentShape[j]);
             }
-            total_error += error_current / sample.currentShape.size();
+            error_current += error_current / (sample.currentShape.size() * accuracy.getInterocularDistance(sample.currentShape));
+            cout<<error_current<<endl;
             count++;
         }
+        else
+            continue;
+        total_error += error_current;
     }
-    cout<<"Total Error "<<total_error/landmarks.size()<<endl;
+    cout<<"Total Error "<<total_error/count<<endl;
     return 0;
 }

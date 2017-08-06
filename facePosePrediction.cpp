@@ -176,42 +176,65 @@ vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, ve
     if(sample.rect.size() == 0)
         return resultPoints;
     double t = (double)getTickCount();
-    //cout<<meanShape<<endl;
     sample.currentShape.resize(meanShape.size());
     sample.currentShape = meanShape;
-    //displayresults(sample);
-        for (int i = 0; i < cascadeFinal.size() ; ++i)
+    for (int i = 0; i < cascadeFinal.size() ; ++i)
+    {
+        vector<Point2f> pixel_relative = pixelCoordinates[i];
+        calcRelativePixels(sample.currentShape, pixel_relative);
+        extractPixelValues(sample, pixel_relative);
+        for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
         {
-            vector<Point2f> pixel_relative = pixelCoordinates[i];
-            calcRelativePixels(sample.currentShape, pixel_relative);
-            extractPixelValues(sample, pixel_relative);
-            for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
+            unsigned long k =0 ;
+            while(k < cascadeFinal[i][j].split.size())
             {
-                unsigned long k =0 ;
-                while(k < cascadeFinal[i][j].split.size())
-                {
-                    if ((float)sample.pixelValues[cascadeFinal[i][j].split[k].idx1] - (float)sample.pixelValues[cascadeFinal[i][j].split[k].idx2] > cascadeFinal[i][j].split[k].thresh)
-                        k = leftChild(k);
-                    else
-                        k = rightChild(k);
-                }
-                k = k - cascadeFinal[i][j].split.size();
-                vector<Point2f> temp;
-                temp.resize(sample.currentShape.size());
-                for (unsigned long l = 0; l < sample.currentShape.size(); ++l)
-                {
-                    //cout<<cascadeFinal[i][j].leaves[k][l]<<endl;
-                    temp[l] = cascadeFinal[i][j].leaves[k][l];
-                }
-                calcSum(sample.currentShape, temp, sample.currentShape);
+                if ((float)sample.pixelValues[cascadeFinal[i][j].split[k].idx1] - (float)sample.pixelValues[cascadeFinal[i][j].split[k].idx2] > cascadeFinal[i][j].split[k].thresh)
+                    k = leftChild(k);
+                else
+                    k = rightChild(k);
             }
+            k = k - cascadeFinal[i][j].split.size();
+            vector<Point2f> temp;
+            temp.resize(sample.currentShape.size());
+            for (unsigned long l = 0; l < sample.currentShape.size(); ++l)
+            {
+                temp[l] = cascadeFinal[i][j].leaves[k][l];
+            }
+            calcSum(sample.currentShape, temp, sample.currentShape);
         }
+    }
+    resultPoints.push_back(sample.currentShape);
     t = (double)getTickCount() - t;
     cout<<"Detection time = "<< t*1000/getTickFrequency() <<"ms"<<endl;
-    displayresults(sample);
     return resultPoints;
 }
 
 
+double KazemiFaceAlignImpl::getInterocularDistance (vector<Point2f>& currentShape)
+{
+    Point2f leftEye, rightEye;
+    double count = 0;
+    //Estimate the Mean of points denoting the left eye
+    for (unsigned long i = 36; i <= 41; ++i) 
+    {
+        leftEye.x += currentShape[i].x;
+        leftEye.y += currentShape[i].y;
+        count++;
+    }
+    leftEye.x /= count;
+    leftEye.y /= count;
+    //Estimate the Mean of points denoting the right eye
+    count = 0;
+    for (unsigned long i = 42; i <= 47; ++i) 
+    {
+        rightEye.x += currentShape[i].x;
+        rightEye.y += currentShape[i].y;
+        count++;
+    }
+    rightEye.x /= count;
+    rightEye.y /= count;
+
+    return getDistance(leftEye, rightEye);
+}
 
 }
