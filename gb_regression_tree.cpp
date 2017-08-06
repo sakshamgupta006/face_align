@@ -48,7 +48,8 @@
 using namespace std;
 using namespace cv;
 
-namespace cv{
+namespace cv
+{
 
 //Parallelization Inducing Functions
 class calcSumSample : public ParallelLoopBody

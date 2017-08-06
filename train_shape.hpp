@@ -164,7 +164,7 @@ class KazemiFaceAlignImpl
         splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
                                     unsigned long end, vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum);
         //@
-        bool extractPixelValues(trainSample &sample ,vector<Point2f>& pixelCoordinates);
+        bool extractPixelValues(trainSample &sample ,vector<Point2f> pixelCoordinates);
         //@
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates);
         //@
@@ -195,19 +195,19 @@ class KazemiFaceAlignImpl
         
         bool readnewdataset(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
         bool displayresultstarget2(vector<trainSample>& samples);
-
+        vector<Point2f> calcRelativePixelsParallel(vector<Point2f>& sample,vector<Point2f> pixelCoordinates, vector<Point2f>& meanShape);
         double getInterocularDistance (vector<Point2f>& currentShape);
         void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
         void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);
         void writeLeafxml( FileStorage& fs, vector< vector<Point2f> >& leaves);
         void writeSplitxml(FileStorage& fs, vector<splitFeature>& split);
         unsigned long numTestSplits;
+        Point2f meanShapeReferencePoints[3];
+        vector<Point2f> meanShape;
+        vector<Point2f> meanShapeBounds;
     private:
         int numFaces;
         int numLandmarks;
-        vector<Point2f> meanShape;
-        vector<Point2f> meanShapeBounds;
-        Point2f meanShapeReferencePoints[3];
         vector< vector<Point2f> > initialShape;
         unsigned long cascadeDepth;
         unsigned long treeDepth;
