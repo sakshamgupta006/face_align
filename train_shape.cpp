@@ -100,7 +100,7 @@ bool KazemiFaceAlignImpl::readnewdataset(vector<cv::String>& l, std::unordered_m
     string annotationPath = path_prefix + "*.png";
     string annotationPath3 = path_prefix + "*.jpg";
     string annotationPath2 = path_prefix + "*.pts";
-    //glob(annotationPath3,l,false);
+    glob(annotationPath3,l,false);
     glob(annotationPath2,filenames,false);
     glob(annotationPath,files_png,false);
     for (int i = 0; i < files_png.size(); ++i)
@@ -139,11 +139,86 @@ bool KazemiFaceAlignImpl::readnewdataset(vector<cv::String>& l, std::unordered_m
         }
         string v = l[j];
         landmarks[v] = temp;
+        cout<<v<<endl;
+        cout<<filenames[j]<<endl;
         temp.clear();
         f.close();
     }
     return true;
 }
+
+bool KazemiFaceAlignImpl::readmirror(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix)
+{
+    vector<cv::String> filenames;
+    vector<cv::String> files_png;
+    //string annotationPath = path_prefix + "*.png";
+    string annotationPath3 = path_prefix + "*_mirror.jpg";
+    string annotationPath2 = path_prefix + "*.pts";
+    glob(annotationPath3,files_png,false);
+    //glob(annotationPath2,filenames,false);
+    //glob(annotationPath,files_png,false);
+            
+    vector<Point2f> temp, temp2;
+    string s, tok, randomstring;
+    vector<string> coordinates;
+    ifstream f;
+
+    for(unsigned long j = 0; j < files_png.size(); j++)
+    {
+        Mat frame = imread(files_png[j]);
+        string pts = files_png[j];
+        String mirrorstringfile = "_mirror.jpg";
+        size_t i1 = pts.find(mirrorstringfile);
+        if (i1 != std::string::npos)
+            pts.erase(i1,mirrorstringfile.length());
+        pts = pts + ".pts";
+        f.open(pts.c_str(),ios::in);
+        if(!f.is_open())
+        {
+            CV_Error(Error::StsError, "File cannot be opened");
+            return false;
+        }
+        getline(f,randomstring);
+        getline(f,randomstring);
+        getline(f,randomstring);
+        for(int i = 0; i < 68; i++)
+        {
+            Point2f point, point2;
+            getline(f,s);
+            stringstream ss(s);
+            while(getline(ss, tok,' ')) 
+            {
+                coordinates.push_back(tok);
+                tok.clear();
+            }
+            point.x = (float)atof(coordinates[0].c_str());
+            point.y = (float)atof(coordinates[1].c_str());
+            point2.x = (float)abs( frame.cols - point.x);
+            point2.y = point.y;
+            coordinates.clear();
+            temp.push_back(point);
+            temp2.push_back(point2);
+        }
+        string img = files_png[j];
+        String mirrorstring = "_mirror";
+        size_t i = files_png[j].find(mirrorstring);
+        if (i != std::string::npos)
+            img.erase(i,mirrorstring.length());
+        string v = img;
+        landmarks[v] = temp;
+        cout<<"Normal Image:  "<<v<<endl;
+        v = files_png[j];
+        landmarks[v] = temp2;
+        cout<<"Mirror Image:  "<<v<<endl;
+        cout<<"Points File:   "<<pts<<endl;
+        temp.clear();
+        temp2.clear();
+        f.close();
+    }
+    return true;
+}
+
+
 
 //read txt files iteratively opening image and its annotations
 bool KazemiFaceAlignImpl::readtxt(vector<cv::String>& filepath, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix)

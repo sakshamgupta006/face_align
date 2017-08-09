@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-#define numSamples 40
+#define numSamples 100
 
 static void help()
 {
@@ -24,7 +24,7 @@ int main(int argc, const char** argv)
             "{help h||}"
             "{cascade | ../../../opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
             "{path | ../data/300wcropped/ | }"
-            "{poseTree| 194_landmarks_face_align.dat |}"
+            "{poseTree| 68_landmarks_face_align.dat |}"
             "{@filename| ../data/train/213033657_1.jpg |}"
         );
     if(parser.has("help"))

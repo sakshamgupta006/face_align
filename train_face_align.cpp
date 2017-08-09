@@ -48,7 +48,7 @@
 using namespace std;
 using namespace cv;
 
-#define numSamples 20
+#define numSamples 10000
 
 namespace cv
 {
@@ -212,12 +212,12 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
         t = (double)getTickCount();
         vector<Point2f> pixrel(pixelCoordinates[i].size());
         pixrel = pixelCoordinates[i];
-        parallel_for_(Range(0, samples.size()), relativeSample(samples, pixrel, meanShape));
-        // for (unsigned long j = 0; j < samples.size(); ++j)
-        // {
-        //     calcRelativePixels(samples[j].currentShape,pixrel);
-        //     extractPixelValues(samples[j],pixrel);
-        // }
+        //parallel_for_(Range(0, samples.size()), relativeSample(samples, pixrel, meanShape));
+        for (unsigned long j = 0; j < samples.size(); ++j)
+        {
+            calcRelativePixels(samples[j].currentShape,pixrel);
+            extractPixelValues(samples[j],pixrel);
+        }
         vector<regressionTree> forest = gradientBoosting(samples, pixelCoordinates[i]);
         cascadeFinal.push_back(forest);
         cout<<"Fitted "<< i + 1 <<"th regressor"<<endl;
@@ -244,6 +244,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
             break;
         trainSample sample;
         sample.img =  imread(dbIterator->first);//getImage(dbIterator->first,path_prefix);
+        cout<<dbIterator->first<<endl;
         sample.targetShape.resize(numLandmarks);
         sample.targetShape = dbIterator->second;
         scaleData(sample.targetShape, sample.img,  Size(460,460));
@@ -263,6 +264,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
         for (unsigned long j = 0; j < oversamplingAmount; ++j)
             samples.push_back(sample);
         calcSum(sample.targetShape, meanShape, meanShape);
+        //displayresultstarget(sample);
         currentCount++;
     }
     for (int i = 0; i < meanShape.size(); ++i)
@@ -282,9 +284,9 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
         {
             double hits=0;
             int count = 0;
-            RNG number(getTickCount());
-            for (int randomint = 0; randomint < numSamples/10; ++randomint)
+            for (int randomint = 0; randomint < 4; ++randomint)
             {
+                    RNG number(getTickCount());
                     unsigned long randomIndex = (unsigned long)number.uniform(0, currentCount*oversamplingAmount-1);
                     while(randomIndex == 0)
                     {
@@ -308,6 +310,7 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
                     }
             }
         }
+        //displayresults()
     }
     cout<<"Total Images Loaded -> "<<(currentCount-1) <<endl;
     cout<<"Total Sample Size -> "<< samples.size() <<endl;
@@ -325,6 +328,28 @@ bool KazemiFaceAlignImpl::scaleData(vector<Point2f>& landmarks, Mat& image, Size
         landmarks[i].x *= scalex;
         landmarks[i].y *= scaley;
     }
+    return true;
+}
+
+bool KazemiFaceAlignImpl::displayresultstarget(trainSample& samples)
+{
+        vector<Point2f> temp1(samples.targetShape.size());
+        Mat image = samples.img.clone();
+        Mat unorm_tform  = unnormalizing_tform(samples.rect[0]);
+        for (int j = 0; j < samples.targetShape.size(); ++j)
+        {
+            Mat temp = (Mat_<double>(3,1)<< samples.targetShape[j].x , samples.targetShape[j].y , 1);
+            Mat res = unorm_tform * temp;
+            temp1[j].x = res.at<double>(0,0);
+            temp1[j].y = res.at<double>(1,0);
+        }
+
+        for (int j = 0; j < samples.targetShape.size() ; ++j)
+        {
+            circle(image, Point(temp1[j]), 5, Scalar(0,0,255) ,-1);
+        }
+        imshow("Results", image);
+        waitKey(0);
     return true;
 }
 
@@ -394,10 +419,11 @@ bool KazemiFaceAlignImpl::displayresults(trainSample& samples)
         }
     for (int j = 0; j < samples.currentShape.size() ; ++j)
     {
-        circle(image, Point(temp1[j]), 5, Scalar(0,0,255), -1 );
+        circle(image, Point(temp1[j]), 3, Scalar(0,0,255), -1 );
     }
     imshow("Display Results", image);
-    waitKey(0);
+    //waitKey(0);
+    //imwrite("result.jpg", image);
     return true;
 }
 

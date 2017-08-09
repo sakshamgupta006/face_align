@@ -151,7 +151,7 @@ class KazemiFaceAlignImpl
             treeDepth = 5;
             numTreesperCascade = 500;
             learningRate = 0.1;
-            oversamplingAmount = 20;
+            oversamplingAmount = 100;
             feature_pool_size = 400;
             numTestCoordinates = 400;
             lambda = 0.1;
@@ -194,9 +194,19 @@ class KazemiFaceAlignImpl
         bool scaleData( vector<Point2f>& trainlandmarks,Mat& trainimages ,Size s);
         
         bool readnewdataset(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
+
         bool displayresultstarget2(vector<trainSample>& samples);
+
         vector<Point2f> calcRelativePixelsParallel(vector<Point2f>& sample,vector<Point2f> pixelCoordinates, vector<Point2f>& meanShape);
+        
         double getInterocularDistance (vector<Point2f>& currentShape);
+        
+        bool readmirror(vector<cv::String>& l, std::unordered_map<string, vector<Point2f>>& landmarks, string path_prefix);
+
+        bool displayresultstarget(trainSample& samples);
+
+        void display(Mat& image, vector< vector<Point2f>>& resultPoints);
+
         void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
         void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);
         void writeLeafxml( FileStorage& fs, vector< vector<Point2f> >& leaves);

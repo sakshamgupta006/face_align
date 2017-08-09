@@ -56,15 +56,16 @@ static void help()
 
 int main(int argc, const char** argv)
 {
+    VideoCapture capture;
     string cascadeName, inputName;
     CascadeClassifier cascade;
     string poseTree;
+    Mat image, frame;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | /home/cooper/gsoc/opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
-            "{path | ../data/300wcropped/ | }"
-            "{poseTree| 194_landmarks_face_align.dat |}"
-            "{@filename| ../data/300wcropped/outdoor_292.png |}"
+            "{cascade | /home/cooper/opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Only HAAR based detectors
+            "{Model| 68_2000_100_landmarks_face_align.dat |}"                         //will work as the model is
+            "{@filename||}"                                                          //trained using HAAR.
         );
     if(parser.has("help"))
     {
@@ -78,14 +79,7 @@ int main(int argc, const char** argv)
         help();
         return -1;
     }
-    poseTree = parser.get<string>("poseTree");
-    inputName = parser.get<string>("@filename");  // Add multiple file support
-    Mat image = imread(inputName);
-    if (!parser.check())
-    {
-        parser.printErrors();
-        return 0;
-    }
+    poseTree = parser.get<string>("Model");
     KazemiFaceAlignImpl predict;
     ifstream fs(poseTree, ios::binary);
     if(!fs.is_open())
@@ -98,14 +92,86 @@ int main(int argc, const char** argv)
     vector< vector<Point2f> > pixelCoordinates;
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
     predict.calcMeanShapeBounds();
-    cout<<"Model Loaded"<<endl;
-    vector< vector<Point2f> > resultLandmarks;
-    //VideoCapture cap(0);
-    // while(1)
-    // {   
-       // cap >> image;
-        predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
-      //  waitKey(0) ;//>= 0) break;
-    //}
+    vector< vector<Point2f>> result;
+    inputName = parser.get<string>("@filename");  // Add multiple file support
+    if (!parser.check())
+    {
+        parser.printErrors();
+        return 0;
+    }
+    if( inputName.empty() || (isdigit(inputName[0]) && inputName.size() == 1) )
+    {
+        int camera = inputName.empty() ? 0 : inputName[0] - '0';
+        if(!capture.open(camera))
+            cout << "Capture from camera #" <<  camera << " didn't work" << endl;
+    }
+    else if( inputName.size() )
+    {
+        image = imread( inputName, 1 );
+        if( image.empty() )
+        {
+            if(!capture.open( inputName ))
+                cout << "Could not read " << inputName << endl;
+        }
+    }
+    else
+    {
+        image = imread( "../data/lena.jpg", 1 );
+        if(image.empty()) cout << "Couldn't read ../data/lena.jpg" << endl;
+    }
+    if( capture.isOpened() )
+    {
+        cout << "Video capturing has been started ..." << endl;
+        for(;;)
+        {
+            capture >> frame;
+            if( frame.empty() )
+                break;
+            result = predict.getFacialLandmarks(frame, forests, pixelCoordinates, cascade);
+            char c = (char)waitKey(10);
+            if( c == 27 || c == 'q' || c == 'Q' )
+                break;
+        }
+    }
+    else
+    {
+        cout << "Detecting landmarks in " << inputName << endl;
+        if( !image.empty() )
+        {
+            result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+            waitKey(0);
+        }
+        else if( !inputName.empty() )
+        {
+            /* assume it is a text file containing the
+            list of the image filenames to be processed - one per line */
+            FILE* f = fopen( inputName.c_str(), "rt" );
+            if( f )
+            {
+                char buf[1000+1];
+                while( fgets( buf, 1000, f ) )
+                {
+                    int len = (int)strlen(buf);
+                    while( len > 0 && isspace(buf[len-1]) )
+                        len--;
+                    buf[len] = '\0';
+                    cout << "file " << buf << endl;
+                    image = imread( buf, 1 );
+                    if( !image.empty() )
+                    {
+                        result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+                        char c = (char)waitKey(0);
+                        if( c == 27 || c == 'q' || c == 'Q' )
+                            break;
+                    }
+                    else
+                    {
+                        cerr << "Aw snap, couldn't read image " << buf << endl;
+                    }
+                }
+                fclose(f);
+            }
+        }
+    }
     return 0;
 }
