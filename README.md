@@ -1,4 +1,4 @@
-# GSOC 2017: Face Alignment Module for OpenCV version 3.2.x
+# GSOC 2017: Face Alignment Module for OpenCV
 The project aims to implement state of the art Face alignment Technique proposed by Vahid Kazemi
 
 ## Project Description
@@ -13,9 +13,9 @@ alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 # License
 By downloading, copying, installing or using the software you agree to this license. If you do not agree to this license, do not download, install, copy or use the software.
 
-													License Agreement
-											For Open Source Computer Vision Library
-												(3-clause BSD License)
+License Agreement
+For Open Source Computer Vision Library
+(3-clause BSD License)
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 
 Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -38,24 +38,50 @@ The default trained tree was trained on OpenCV's **HAAR cascade** which can be d
 ## Building Face-Alignment Module and Examples
 
 Clone the repository:
-'''
+```
 https://github.com/sakshamgupta006/face_align.git
-'''
+```
 Then follow the following steps:
-'''
+```
 cd face_align
 mkdir build
 cd build
 cmake ..
 make
-'''
+```
 
 ## Running Samples
-The module comes with examples demonstrating the results on **Video, Image, Multiple Images, External Capturing Devices.**
+The module comes with examples demonstrating the results on **Video, Image, Multiple Images, External Capturing Devices.** Additionally, the module also includes examples to:
+* **Train** Face Alignment on new dataset and parameters.
+* **Test Accuracy** of the trained model.
+* **A Snapchat Filter** Like application 
 
 ### Sample Training Example
 
-### Sample Face Alignment
+```
+./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> <Output Name of Trained Model>
+```
+or you can simply run
+```
+./Train_ex -path <path to the dataset>
+```
+This will take the default values and an output file with name **68_landmarks_face_align.dat** will be generated after training.
+### Sample Face Alignment Prediction
+#### For Videos
+```
+./Landmark_prediction -cascade <location of HAAR cascade model> -model <path to trained model> <path to video file / external capturing device id>
+```
+If no <path to video file> is defined the code will capture the web camera, if available.
+
+#### For Images
+```
+./Landmark_prediction -cascade <location of HAAR cascade model> -model <path to trained model> <path to image / path to txt file containig images location>
+```
+or you can simply run
+```
+./Landmark_prediction <path to image / path to txt file containig images location>
+```
+This will take the default values of cascade and trained model.
 
 ### Sample Filter Application
 

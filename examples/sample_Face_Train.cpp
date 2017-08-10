@@ -1,7 +1,7 @@
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-#include "train_shape.hpp"
+#include "../include/train_shape.hpp"
 #include "opencv2/core/core.hpp"
 #include <iostream>
 #include <vector>
@@ -24,10 +24,9 @@ int main(int argc, const char** argv )
         string path_prefix;
         cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | /home/cooper/gsoc/opencv/data/haarcascades/haarcascade_frontalface_alt2.xml|}"
+            "{cascade | /../data/haarcascade_frontalface_alt2.xml|}"
             "{path | ../../ibug_300W_large_face_landmark_dataset/main_trainset/ | }"
-            "{meanshape | |}"
-            "{@filename| 194_landmarks_face_align.dat |}"
+            "{@filename| 68_landmarks_face_align.dat |}"
         );
         if(parser.has("help"))
         {
@@ -42,10 +41,6 @@ int main(int argc, const char** argv )
             return -1;
         }
         path_prefix = parser.get<string>("path");
-        if(parser.has("meanshape"))
-        {
-            calcmeanshape = true;
-        }
         outputName = parser.get<string>("@filename");
         if (!parser.check())
         {

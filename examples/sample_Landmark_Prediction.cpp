@@ -42,9 +42,10 @@
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "train_shape.hpp"
+#include "../include/train_shape.hpp"
 #include "opencv2/videoio.hpp"
-#include <bits/stdc++.h>
+#include <vector>
+#include <iostream>
 
 using namespace std;
 using namespace cv;
@@ -63,9 +64,9 @@ int main(int argc, const char** argv)
     Mat image, frame;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | /home/cooper/opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Only HAAR based detectors
-            "{Model| 68_2000_100_landmarks_face_align.dat |}"                         //will work as the model is
-            "{@filename||}"                                                          //trained using HAAR.
+            "{cascade | /../data/haarcascade_frontalface_alt.xml|}"  //Only HAAR based detectors
+            "{model| /../data/68_landmarks_face_align.dat |}"        //will work as the model is
+            "{@filename||}"                                         //trained using HAAR.
         );
     if(parser.has("help"))
     {
@@ -79,7 +80,7 @@ int main(int argc, const char** argv)
         help();
         return -1;
     }
-    poseTree = parser.get<string>("Model");
+    poseTree = parser.get<string>("model");
     KazemiFaceAlignImpl predict;
     ifstream fs(poseTree, ios::binary);
     if(!fs.is_open())
@@ -93,7 +94,7 @@ int main(int argc, const char** argv)
     predict.loadTrainedModel(fs, forests, pixelCoordinates);
     predict.calcMeanShapeBounds();
     vector< vector<Point2f>> result;
-    inputName = parser.get<string>("@filename");  // Add multiple file support
+    inputName = parser.get<string>("@filename");
     if (!parser.check())
     {
         parser.printErrors();
@@ -128,6 +129,7 @@ int main(int argc, const char** argv)
             if( frame.empty() )
                 break;
             result = predict.getFacialLandmarks(frame, forests, pixelCoordinates, cascade);
+            predict.display(frame, result);
             char c = (char)waitKey(10);
             if( c == 27 || c == 'q' || c == 'Q' )
                 break;
@@ -139,6 +141,7 @@ int main(int argc, const char** argv)
         if( !image.empty() )
         {
             result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+            predict.display(frame, result);
             waitKey(0);
         }
         else if( !inputName.empty() )
@@ -160,6 +163,7 @@ int main(int argc, const char** argv)
                     if( !image.empty() )
                     {
                         result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
+                        predict.display(frame, result);
                         char c = (char)waitKey(0);
                         if( c == 27 || c == 'q' || c == 'Q' )
                             break;

@@ -2,8 +2,9 @@
 #include "opencv2/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "train_shape.hpp"
-#include <bits/stdc++.h>
+#include "../include/train_shape.hpp"
+#include <vector>
+#include <iostream>
 
 using namespace std;
 using namespace cv;
@@ -22,10 +23,10 @@ int main(int argc, const char** argv)
     string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../../../opencv/data/haarcascades/haarcascade_frontalface_alt.xml|}"  //Add LBP , HOG and HAAR based detectors also
+            "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"
             "{path | ../data/300wcropped/ | }"
-            "{poseTree| 68_landmarks_face_align.dat |}"
-            "{@filename| ../data/train/213033657_1.jpg |}"
+            "{poseTree| ../data/68_landmarks_face_align.dat |}"
+            "{@filename||}"
         );
     if(parser.has("help"))
     {
@@ -41,7 +42,7 @@ int main(int argc, const char** argv)
     }
     string path_prefix = parser.get<string>("path");
     poseTree = parser.get<string>("poseTree");
-    inputName = parser.get<string>("@filename");  // Add multiple file support
+    inputName = parser.get<string>("@filename");
     if (!parser.check())
     {
         parser.printErrors();
