@@ -5,6 +5,10 @@ The project aims to implement state of the art Face alignment Technique proposed
 The GSOC proposal can be found on [Drive](https://drive.google.com/open?id=10LIfoV-pRIjoH-xNmLwaQOANavfMYT-5cS-4FpwTSPE).
 We aim to implement the paper [One Millisecond Face Alignment with an Ensemble of Regression Trees](https://pdfs.semanticscholar.org/d78b/6a5b0dcaa81b1faea5fb0000045a62513567.pdf) using OpenCV.
 
+<a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/result_3.png" 
+alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
+<a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/result_4.png" 
+alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 <a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/test_1.jpg" 
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 <a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/test_2.jpg" 
@@ -61,6 +65,11 @@ The module comes with examples demonstrating the results on **Video, Image, Mult
 ```
 ./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> <Output Name of Trained Model>
 ```
+To modify the parameters for Training run the following command
+```
+./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> -landmarks=<number of Landmarks> -oversampling=<Over sampling Amount> -learningrate=<Learning Rate> -cascadedepth=<> -treedepth=<> -treespercascade=<> -testcoordinates=<> -numtestsplits=<> -lambda=<> <Output Name of Trained Model>
+
+```
 or you can simply run
 ```
 ./Train_ex -path <path to the dataset>
@@ -92,7 +101,7 @@ The module was trained on a combination of HELEN, LFPW, iBug, and AFW datasets a
 I am being mentored by [Simon Niklaus](https://www.google.co.in/url?sa=t&rct=j&q=&esrc=s&source=web&cd=2&cad=rja&uact=8&ved=0ahUKEwjLtZSM-bPUAhXIgI8KHXKwCuoQFggqMAE&url=http%3A%2F%2Fwww.sniklaus.com%2F&usg=AFQjCNFbkMT3hq7F2D-SSMwDmVMIkBXZAg&sig2=wHJv3K7Zb5IvDuFeGWY7yg) from Portland State University.
 
 ## Documentation
-Detailed explaination of each function can be found inside the include/train_shape.hpp file alongside the concerend function.
+Detailed explaination of each function can be found inside the **include/train_shape.hpp** file alongside the concerend function.
 
 ## Timeline
 A detailed timeline of the project can be found on [Google Calander](https://calendar.google.com/calendar/embed?src=q5686lb1opb5kfrqatjslo2060%40group.calendar.google.com&ctz=Asia/Calcutta)
