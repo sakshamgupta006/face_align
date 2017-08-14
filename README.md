@@ -91,6 +91,9 @@ The module was trained on a combination of HELEN, LFPW, iBug, and AFW datasets a
 ## Mentor
 I am being mentored by [Simon Niklaus](https://www.google.co.in/url?sa=t&rct=j&q=&esrc=s&source=web&cd=2&cad=rja&uact=8&ved=0ahUKEwjLtZSM-bPUAhXIgI8KHXKwCuoQFggqMAE&url=http%3A%2F%2Fwww.sniklaus.com%2F&usg=AFQjCNFbkMT3hq7F2D-SSMwDmVMIkBXZAg&sig2=wHJv3K7Zb5IvDuFeGWY7yg) from Portland State University.
 
+## Documentation
+Detailed explaination of each function can be found inside the include/train_shape.hpp file alongside the concerend function.
+
 ## Timeline
 A detailed timeline of the project can be found on [Google Calander](https://calendar.google.com/calendar/embed?src=q5686lb1opb5kfrqatjslo2060%40group.calendar.google.com&ctz=Asia/Calcutta)
 

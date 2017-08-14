@@ -153,7 +153,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
         randomdoublenumber = rnd.uniform(0.,1.);
     }
     while((feature.idx1 == feature.idx2 || !(acceptProbability > randomdoublenumber)));
-    feature.thresh = (rnd.uniform(0.,1.)*256 - 128.0) / 2.0 ;
+    feature.thresh = (rnd.uniform(0.,1.)*255);// - 128.0) / 2.0 ;
     return feature;
 }
 

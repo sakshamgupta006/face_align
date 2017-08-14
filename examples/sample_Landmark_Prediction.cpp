@@ -130,7 +130,7 @@ int main(int argc, const char** argv)
                 break;
             vector<Rect> faces  = predict.faceDetector(frame, cascade);
             result = predict.getFacialLandmarks(frame, faces, forests, pixelCoordinates);
-            predict.renderDetectionsperframe(frame, faces, result, Scalar(0,255,0), 3);
+            predict.renderDetectionsperframe(frame, faces, result, Scalar(0,255,0), 2);
             char c = (char)waitKey(10);
             if( c == 27 || c == 'q' || c == 'Q' )
                 break;
@@ -144,7 +144,7 @@ int main(int argc, const char** argv)
             resize(image, image, Size(460,460));
             vector<Rect> faces = predict.faceDetector(image, cascade);
             result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
-            predict.renderDetectionsperframe(image, faces, result, Scalar(0, 255, 0), 3);
+            predict.renderDetectionsperframe(image, faces, result, Scalar(0, 255, 0), 2);
             waitKey(0);
         }
         else if( !inputName.empty() )
@@ -168,7 +168,7 @@ int main(int argc, const char** argv)
                         resize(image, image, Size(460,460));
                         vector<Rect> faces = predict.faceDetector(image, cascade);
                         result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
-                        predict.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 3);
+                        predict.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 2);
                         char c = (char)waitKey(0);
                         if( c == 27 || c == 'q' || c == 'Q' )
                             break;

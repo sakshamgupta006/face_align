@@ -80,28 +80,53 @@ struct trainSample
     vector<Point2f> currentShape;
     //! vector that will contain the residual annotations that is obtained using current and target annotations
     vector<Point2f> residualShape;
-    //! vector to store the pixel values at the desired annotations locations.
+    //! vector to store the pixel values at the desired annotations locations
     vector<double> pixelValues;
-
+    //! vector to strore test pixel coordinates at each cascade level
     vector<Point2f> pixelCoordinates;
 };
 class KazemiFaceAlignImpl
 {
     public:
-        //KazemiFaceAlignImpl();
-        //virtual ~KazemiFaceAlignImpl();
-        //*@Returns number of faces detected in the image */
-        int getFacesNum() const {return numFaces;}
         // /*@Returns number of landmarks to be considered */
-        int getLandmarksNum() const {return numLandmarks;}
-        //@ Returns cascade Depth
-        int getCascadeDepth() const {return cascadeDepth;}
+        unsigned long getnumLandmarks() const {return numLandmarks;}
+        
+        void setnumLandmarks(unsigned long numberLandmarks);
+
+        unsigned long getnumLandmarks(){ return numLandmarks;}
+
+        void setOverSampling(unsigned long oversampling);
+
+        unsigned long getOverSampling(){ return oversamplingAmount;}
+
+        void setLearningRate(float learingrate);
+
+        float getLearningRate(){ return learningRate;}
         //@ Sets cascade's Depth
-        void setCascadeDepth(unsigned int);
-        //@ Returns Tree Depth
-        int getTreeDepth() const {return treeDepth;}
+        void setCascadeDepth(unsigned long cascadedepth);
+        //@ Returns cascade Depth
+        unsigned long getCascadeDepth() const {return cascadeDepth;}
         //@ Sets Regression Tree's Depth
-        void setTreeDepth(unsigned int);
+        void setTreeDepth(unsigned long);
+        //@ Returns Tree Depth
+        unsigned long getTreeDepth() const {return treeDepth;}
+
+        void setTreesPerCascade(unsigned long treespercascade);
+
+        unsigned long getTreesPerCascade(){ return numTreesperCascade;}
+
+        void setTestCoordinates(unsigned long testcoordinates);
+
+        unsigned long getTestCoordinates(){ return numTestCoordinates;}
+
+        void setTestSplits(unsigned long testsplits);
+
+        unsigned long getTestSplits(){ return numTestSplits;}
+
+        void setLambda(float Lambda);
+
+        float getLambda(){ return lambda;}
+
         //@ Returns the left of child the Regression Tree
         unsigned long leftChild (unsigned long idx);
         //@ Returns the right child of the Regression Tree
@@ -153,7 +178,7 @@ class KazemiFaceAlignImpl
             treeDepth = 5;
             numTreesperCascade = 500;
             learningRate = 0.1;
-            oversamplingAmount = 40;
+            oversamplingAmount = 100;
             feature_pool_size = 400;
             numTestCoordinates = 500;
             lambda = 0.1;

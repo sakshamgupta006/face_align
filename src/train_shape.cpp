@@ -52,8 +52,40 @@ using namespace cv;
 
 namespace cv
 {
+void KazemiFaceAlignImpl::setnumLandmarks(unsigned long numberLandmarks)
+{
+    if(numberLandmarks < 0)
+    {
+        String errmsg = "Invalid Number of Landmarks";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    numLandmarks = numberLandmarks;
+}
 
-void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
+void KazemiFaceAlignImpl::setOverSampling(unsigned long oversampling)
+{
+    if(oversampling <= 0)
+    {
+        String errmsg = "Invalid Over Sampling Amount";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    oversamplingAmount = oversampling;
+}
+
+void KazemiFaceAlignImpl::setLearningRate(float learningrate)
+{
+    if(learningrate < 0)
+    {
+        String errmsg = "Invalid Learing Rate";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    learningRate = learningrate;
+}
+
+void KazemiFaceAlignImpl::setCascadeDepth(unsigned long newdepth)
 {
     if(newdepth < 0)
     {
@@ -64,7 +96,8 @@ void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
     cascadeDepth = newdepth;
 }
 
-void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
+
+void KazemiFaceAlignImpl::setTreeDepth(unsigned long newdepth)
 {
     if(newdepth < 0)
     {
@@ -73,6 +106,50 @@ void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
         return ;
     }
     treeDepth = newdepth;
+}
+
+void KazemiFaceAlignImpl::setTreesPerCascade(unsigned long treespercascade)
+{
+    if(treespercascade < 0)
+    {
+        String errmsg = "Invalid Number of Trees per Cascade";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    numTreesperCascade = treespercascade;
+}
+
+void KazemiFaceAlignImpl::setTestCoordinates(unsigned long newcoordinates)
+{
+    if(newcoordinates < 0)
+    {
+        String errmsg = "Invalid number of Test coordinates";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    numTestCoordinates = newcoordinates;
+}
+
+void KazemiFaceAlignImpl::setTestSplits(unsigned long testsplits)
+{
+    if(testsplits < 0)
+    {
+        String errmsg = "Invalid number of Test Splits";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    numTestSplits = testsplits;
+}
+
+void KazemiFaceAlignImpl::setLambda(float Lambda)
+{
+    if(Lambda < 0)
+    {
+        String errmsg = "Invalid Lambda";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    lambda = Lambda;
 }
 
 unsigned long KazemiFaceAlignImpl::leftChild(unsigned long idx)

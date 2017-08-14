@@ -216,7 +216,6 @@ vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat image, vec
             Mat res = unormmat * temp;
             sample.currentShape[k].x = res.at<double>(0,0);
             sample.currentShape[k].y = res.at<double>(1,0);
-            cout<<sample.currentShape[k]<<endl;
         }
         resultPoints.push_back(sample.currentShape);
     }

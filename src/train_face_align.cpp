@@ -231,7 +231,7 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
     fs.close();
     for (int i = 0; i < samples.size(); ++i)
     {
-        renderDetections(samples[i], Scalar(0,255,0), 3);
+        renderDetections(samples[i], Scalar(0,255,0), 2);
     }
     return true;
 }
