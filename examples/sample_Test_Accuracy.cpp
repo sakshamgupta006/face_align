@@ -79,7 +79,7 @@ int main(int argc, const char** argv)
         if(sample.rect.size() == 1)
         {
             vector< vector<Point2f> > result;
-            result = accuracy.getFacialLandmarks(sample.img, forests, pixelCoordinates, cascade);
+            result = accuracy.getFacialLandmarks(sample.img, sample.rect, forests, pixelCoordinates);
             sample.currentShape = result[0];
             Mat unorm_tform  = accuracy.unnormalizing_tform(sample.rect[0]);
             for (int j = 0; j < sample.currentShape.size(); ++j)

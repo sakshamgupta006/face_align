@@ -24,8 +24,8 @@ int main(int argc, const char** argv )
         string path_prefix;
         cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | /../data/haarcascade_frontalface_alt2.xml|}"
-            "{path | ../../ibug_300W_large_face_landmark_dataset/main_trainset/ | }"
+            "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"
+            "{path | ../data/300wcropped/ | }"
             "{@filename| 68_landmarks_face_align.dat |}"
         );
         if(parser.has("help"))
@@ -48,7 +48,7 @@ int main(int argc, const char** argv )
             return 0;
         }
         KazemiFaceAlignImpl train;
-        train.readmirror(names, landmarks, path_prefix);
+        train.readnewdataset(names, landmarks, path_prefix);
         train.trainCascade(landmarks, path_prefix, cascade, outputName);
         cout<<"Training Complete"<<endl;
 return 0;

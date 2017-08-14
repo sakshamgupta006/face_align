@@ -82,6 +82,8 @@ struct trainSample
     vector<Point2f> residualShape;
     //! vector to store the pixel values at the desired annotations locations.
     vector<double> pixelValues;
+
+    vector<Point2f> pixelCoordinates;
 };
 class KazemiFaceAlignImpl
 {
@@ -140,7 +142,7 @@ class KazemiFaceAlignImpl
 
         bool displayresults2(vector<trainSample>& samples);
         //@
-        vector< vector<Point2f> > getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade);
+        vector< vector<Point2f> > getFacialLandmarks(Mat image, vector<Rect>& faces, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates);
 
         // PASS SOME CONFIG FILE FOR ALL THE INITIAL PARAMETERS
         KazemiFaceAlignImpl()
@@ -151,9 +153,9 @@ class KazemiFaceAlignImpl
             treeDepth = 5;
             numTreesperCascade = 500;
             learningRate = 0.1;
-            oversamplingAmount = 100;
+            oversamplingAmount = 40;
             feature_pool_size = 400;
-            numTestCoordinates = 400;
+            numTestCoordinates = 500;
             lambda = 0.1;
             numTestSplits = 20;
             numFeature = 400;
@@ -164,7 +166,7 @@ class KazemiFaceAlignImpl
         splitFeature splitGenerator(vector<trainSample>& samples, vector<Point2f> pixelCoordinates, unsigned long start ,
                                     unsigned long end, vector<Point2f>& sum, vector<Point2f>& leftSum, vector<Point2f>& rightSum);
         //@
-        bool extractPixelValues(trainSample &sample ,vector<Point2f> pixelCoordinates);
+        bool extractPixelValues(trainSample &sample);
         //@
         regressionTree buildRegressionTree(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates);
         //@
@@ -177,7 +179,7 @@ class KazemiFaceAlignImpl
         //@
         unsigned int findNearestLandmark(Point2f& pixelValue);
         
-        bool calcRelativePixels(vector<Point2f>& sample,vector<Point2f>& pixel_coordinates);
+        bool calcRelativePixels(trainSample& sample);
         //@
         bool generateTestCoordinates(vector< vector<Point2f> >& pixelCoordinates);
         
@@ -197,7 +199,7 @@ class KazemiFaceAlignImpl
 
         bool displayresultstarget2(vector<trainSample>& samples);
 
-        vector<Point2f> calcRelativePixelsParallel(vector<Point2f>& sample,vector<Point2f> pixelCoordinates, vector<Point2f>& meanShape);
+        bool calcRelativePixelsParallel(trainSample& sample, vector<Point2f>& meanShape);
         
         double getInterocularDistance (vector<Point2f>& currentShape);
         
@@ -206,6 +208,12 @@ class KazemiFaceAlignImpl
         bool displayresultstarget(trainSample& samples);
 
         void display(Mat& image, vector< vector<Point2f>>& resultPoints);
+
+        void rescaleData(vector< vector<Point2f>>& results, float scalex, float scaley);
+
+        void renderDetections(trainSample& sample, Scalar color, int thickness);
+
+        void renderDetectionsperframe(Mat& image, vector<Rect>& faces, vector< vector<Point2f>>& results, Scalar color, int thickness);
 
         void writeCascadexml( FileStorage& fs,vector<regressionTree>& forest);
         void writeTreexml( FileStorage& fs, regressionTree& tree,unsigned long treeNo);

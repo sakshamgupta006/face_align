@@ -151,9 +151,9 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
         double dist = getDistance(pixelCoordinates[feature.idx1] , pixelCoordinates[feature.idx2]);
         acceptProbability = exp(-dist/lambda);
         randomdoublenumber = rnd.uniform(0.,1.);
-        feature.thresh = rnd.uniform(double(-255),double(255));
     }
-    while((feature.idx1 == feature.idx2 || randomdoublenumber > acceptProbability));
+    while((feature.idx1 == feature.idx2 || !(acceptProbability > randomdoublenumber)));
+    feature.thresh = (rnd.uniform(0.,1.)*256 - 128.0) / 2.0 ;
     return feature;
 }
 
@@ -166,7 +166,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     for (unsigned int i = 0; i < numTestSplits; ++i)
     {
         features.push_back(randomSplitFeatureGenerator(pixelCoordinates));
-        leftSums[i].resize(samples[0].targetShape.size());
+        leftSums[i].resize(numLandmarks);
     }
     vector<unsigned long> leftCount;
     leftCount.resize(numTestSplits);
@@ -181,7 +181,7 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
     for (unsigned long i = 0; i < numTestSplits; ++i)
     {
         double currentScore = 0;
-        unsigned long rightCount = (end - start + 1) - leftCount[i];  // See for the extra 1
+        unsigned long rightCount = (end - start + 1) - leftCount[i];
         for (int j = 0; j < leftSums[i].size(); ++j)
         {
             if(rightCount != 0)
@@ -199,24 +199,23 @@ splitFeature KazemiFaceAlignImpl::splitGenerator(vector<trainSample>& samples, v
             else
                 leftSumTree[j] = Point2f(0,0);   
         }
-            Point2f point1(0,0);
-            Point2f point2(0,0);
-            for(unsigned long k = 0; k < leftSumTree.size(); k++)
-            {
-                point1.x += (float)pow(leftSumTree[k].x, 2);
-                point1.y += (float)pow(leftSumTree[k].y, 2);
-                point2.x += (float)pow(rightSums[k].x, 2);
-                point2.y += (float)pow(rightSums[k].y, 2);
-            }
-            score = ((double)sqrt(point1.x + point1.y) * (double)leftCount[i]) + ((double)sqrt(point2.x + point2.y) * (double)rightCount);
-            if(score > bestScore)
-            {
-                bestScore = score;
-                bestFeature = i;
-            }
+        Point2f point1(0,0);
+        Point2f point2(0,0);
+        for(unsigned long k = 0; k < leftSumTree.size(); k++)
+        {
+            point1.x += (float)pow(leftSumTree[k].x, 2);
+            point1.y += (float)pow(leftSumTree[k].y, 2);
+            point2.x += (float)pow(rightSums[k].x, 2);
+            point2.y += (float)pow(rightSums[k].y, 2);
+        }
+        score = (double)sqrt(point1.x + point1.y)/leftCount[i] + (double)sqrt(point2.x + point2.y)/rightCount;
+        if(score > bestScore)
+        {
+            bestScore = score;
+            bestFeature = i;
+        }
     }
-    leftSum.resize(sum.size());
-    leftSum = leftSums[bestFeature];
+    leftSums[bestFeature].swap(leftSum);
     rightSum.resize(sum.size());
     for(unsigned long k = 0; k < sum.size(); k++)
     {
@@ -233,9 +232,10 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
     deque< pair<unsigned long, unsigned long > >  partition;
     partition.push_back(make_pair(0, (unsigned long)samples.size()));
     const unsigned long numSplitNodes = (unsigned long)(pow(2 , (double)getTreeDepth()) - 1);
+    tree.split.resize(numSplitNodes);
     vector<Point2f> zerovector;
     zerovector.assign(numLandmarks, Point2f(0,0));
-    vector< vector<Point2f> > sums(numSplitNodes*2 + 1 , zerovector);
+    vector< vector<Point2f> > sums(numSplitNodes*2 + 1, zerovector);
     //Initialize Sum for the root node
     parallel_for_(Range(0, samples.size()), calcDiffSample(samples, sums[0]));
     //Iteratively generate Splits in the samples
@@ -244,7 +244,7 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
         pair<unsigned long, unsigned long> rangeleaf = partition.front();
         partition.pop_front();
         splitFeature split = splitGenerator(samples, pixelCoordinates, rangeleaf.first, rangeleaf.second, sums[i], sums[leftChild(i)], sums[rightChild(i)]);
-        tree.split.push_back(split);
+        tree.split[i] = split;
         unsigned long mid = partitionSamples(split, samples, rangeleaf.first, rangeleaf.second);
         partition.push_back(make_pair(rangeleaf.first, mid));
         partition.push_back(make_pair(mid, rangeleaf.second));

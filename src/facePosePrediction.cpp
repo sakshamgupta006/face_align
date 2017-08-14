@@ -166,27 +166,29 @@ bool KazemiFaceAlignImpl::loadTrainedModel(ifstream& fs, vector< vector<regressi
     return true;
 }
 
-vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates, CascadeClassifier& cascade)
+vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat image, vector<Rect>& faces, vector< vector<regressionTree> >& cascadeFinal, vector< vector<Point2f>>& pixelCoordinates)
 {
     double t = (double)getTickCount();
-    resize(image, image, Size(460,460));
+    float scalex = (float)image.cols / 460;
+    float scaley = (float)image.rows / 460;
+    Mat image2 = image.clone();
+    //resize(image, image, Size(460,460));
     vector< vector<Point2f> > resultPoints;
-    vector<Rect> numfaces = faceDetector(image, cascade); 
-    for(unsigned long j = 0; j < numfaces.size(); j++)
+    for(unsigned long j = 0; j < faces.size(); j++)
     {
         trainSample sample;
         sample.img = image;
         sample.rect.resize(1);
-        sample.rect[0] = numfaces[j];
+        sample.rect[0] = faces[j];
         if(sample.rect.size() == 0)
             return resultPoints;
         sample.currentShape.resize(meanShape.size());
         sample.currentShape = meanShape;    
         for (int i = 0; i < cascadeFinal.size() ; ++i)
         {
-            vector<Point2f> pixel_relative = pixelCoordinates[i];
-            calcRelativePixels(sample.currentShape, pixel_relative);
-            extractPixelValues(sample, pixel_relative);
+            sample.pixelCoordinates = pixelCoordinates[i];
+            calcRelativePixels(sample);
+            extractPixelValues(sample);
             for(unsigned long j = 0; j < cascadeFinal[i].size(); j++)
             {
                 unsigned long k =0 ;
@@ -214,11 +216,13 @@ vector< vector<Point2f> > KazemiFaceAlignImpl::getFacialLandmarks(Mat& image, ve
             Mat res = unormmat * temp;
             sample.currentShape[k].x = res.at<double>(0,0);
             sample.currentShape[k].y = res.at<double>(1,0);
+            cout<<sample.currentShape[k]<<endl;
         }
         resultPoints.push_back(sample.currentShape);
     }
     t = (double)getTickCount() - t;
-    display(image, resultPoints);
+    //rescaleData(resultPoints, scalex, scaley);
+    //display(image2, resultPoints);
     cout<<"Detection time = "<< t*1000/getTickFrequency() <<"ms"<<endl;
     return resultPoints;
 }
@@ -253,14 +257,28 @@ double KazemiFaceAlignImpl::getInterocularDistance (vector<Point2f>& currentShap
 
 void KazemiFaceAlignImpl::display(Mat& image, vector< vector<Point2f>>& resultPoints)
 {
+    cout<<"Image"<<image.rows<<"  "<<image.cols<<endl;
     for(unsigned long i = 0; i < resultPoints.size(); i++)
     {
         for (unsigned long j = 0; j < resultPoints[i].size(); j++)
         {
             circle(image, Point(resultPoints[i][j]), 5, Scalar(0,0,255), -1);
+            cout<<resultPoints[i][j]<<endl;
         }
     }
     imshow("Facial Landmarks", image);
+}
+
+void KazemiFaceAlignImpl::rescaleData(vector< vector<Point2f>>& results, float scalex, float scaley)
+{
+    for (unsigned long i = 0; i < results.size(); ++i)
+    {
+        for (unsigned long j = 0; j < results[i].size(); ++j)
+        {
+            results[i][j].x *= scalex;
+            results[i][j].y *= scaley;
+        }
+    }
 }
 
 }

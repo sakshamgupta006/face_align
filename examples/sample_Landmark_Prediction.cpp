@@ -64,8 +64,8 @@ int main(int argc, const char** argv)
     Mat image, frame;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | /../data/haarcascade_frontalface_alt.xml|}"  //Only HAAR based detectors
-            "{model| /../data/68_landmarks_face_align.dat |}"        //will work as the model is
+            "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"  //Only HAAR based detectors
+            "{model| ../data/68_landmarks_face_align.dat |}"        //will work as the model is
             "{@filename||}"                                         //trained using HAAR.
         );
     if(parser.has("help"))
@@ -128,8 +128,9 @@ int main(int argc, const char** argv)
             capture >> frame;
             if( frame.empty() )
                 break;
-            result = predict.getFacialLandmarks(frame, forests, pixelCoordinates, cascade);
-            predict.display(frame, result);
+            vector<Rect> faces  = predict.faceDetector(frame, cascade);
+            result = predict.getFacialLandmarks(frame, faces, forests, pixelCoordinates);
+            predict.renderDetectionsperframe(frame, faces, result, Scalar(0,255,0), 3);
             char c = (char)waitKey(10);
             if( c == 27 || c == 'q' || c == 'Q' )
                 break;
@@ -140,8 +141,10 @@ int main(int argc, const char** argv)
         cout << "Detecting landmarks in " << inputName << endl;
         if( !image.empty() )
         {
-            result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
-            predict.display(frame, result);
+            resize(image, image, Size(460,460));
+            vector<Rect> faces = predict.faceDetector(image, cascade);
+            result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
+            predict.renderDetectionsperframe(image, faces, result, Scalar(0, 255, 0), 3);
             waitKey(0);
         }
         else if( !inputName.empty() )
@@ -162,8 +165,10 @@ int main(int argc, const char** argv)
                     image = imread( buf, 1 );
                     if( !image.empty() )
                     {
-                        result = predict.getFacialLandmarks(image, forests, pixelCoordinates, cascade);
-                        predict.display(frame, result);
+                        resize(image, image, Size(460,460));
+                        vector<Rect> faces = predict.faceDetector(image, cascade);
+                        result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
+                        predict.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 3);
                         char c = (char)waitKey(0);
                         if( c == 27 || c == 'q' || c == 'Q' )
                             break;

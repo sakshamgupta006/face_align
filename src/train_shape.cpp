@@ -64,8 +64,6 @@ void KazemiFaceAlignImpl::setCascadeDepth(unsigned int newdepth)
     cascadeDepth = newdepth;
 }
 
-//KazemiFaceAlignImpl::~KazemiFaceAlignImpl()
-
 void KazemiFaceAlignImpl::setTreeDepth(unsigned int newdepth)
 {
     if(newdepth < 0)
@@ -208,11 +206,8 @@ bool KazemiFaceAlignImpl::readmirror(vector<cv::String>& l, std::unordered_map<s
             img.erase(i,mirrorstring.length());
         string v = img;
         landmarks[v] = temp;
-        cout<<"Normal Image:  "<<v<<endl;
         v = files_png[j];
         landmarks[v] = temp2;
-        cout<<"Mirror Image:  "<<v<<endl;
-        cout<<"Points File:   "<<pts<<endl;
         temp.clear();
         temp2.clear();
         f.close();
@@ -260,7 +255,7 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     Mat gray;
     cvtColor( image, gray, COLOR_BGR2GRAY);
     equalizeHist(gray,gray);
-    cascade.detectMultiScale( gray, faces,1.1, 3, 0 |CASCADE_SCALE_IMAGE,Size(100, 100) );
+    cascade.detectMultiScale(gray, faces, 1.1, 3, 0 |CASCADE_SCALE_IMAGE,Size(100, 100));
     numFaces = faces.size();
     return faces;
 }
@@ -322,5 +317,96 @@ bool KazemiFaceAlignImpl::calcMeanShapeBounds()
     meanShapeReferencePoints[1] = Point2f(meanShapeRectmaxx, meanShapeRectminy);
     meanShapeReferencePoints[2] = Point2f(meanShapeRectminx, meanShapeRectmaxy);
     return true;
+}
+
+void KazemiFaceAlignImpl::renderDetections(trainSample& sample, Scalar color, int thickness)
+{
+    Mat image = sample.img.clone();
+    vector<Point2f> temp1(sample.currentShape.size());
+    Mat unorm_tform  = unnormalizing_tform(sample.rect[0]);
+    for (unsigned long j = 0; j < sample.currentShape.size(); ++j)
+    {
+        Mat temp = (Mat_<double>(3,1)<< sample.currentShape[j].x , sample.currentShape[j].y , 1);
+        Mat res = unorm_tform * temp;
+        temp1[j].x = res.at<double>(0,0);
+        temp1[j].y = res.at<double>(1,0);
+    }
+    //Chin
+    for(unsigned long i = 1; i <= 16; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    //Top of nose
+    for(unsigned long i = 28; i <= 30; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    //Left Eyebrow
+    for(unsigned long i = 18; i <= 21; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    //Right Eyebrow
+    for(unsigned long i = 23; i <= 26; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    //Bottom Part of nose
+    for(unsigned long i = 31; i <= 35; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    //Nose to bottom part above
+    line(image, temp1[30], temp1[35], color, thickness, CV_AA);
+    //Left Eye
+    for(unsigned long i = 37; i <= 41; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    line(image, temp1[36], temp1[41], color, thickness, CV_AA);
+    //Right Eye
+    for(unsigned long i = 43; i <= 47; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    line(image, temp1[42], temp1[47], color, thickness, CV_AA);
+    //Lips outer part
+    for(unsigned long i = 49; i <= 59; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    line(image, temp1[48], temp1[59], color, thickness, CV_AA);
+    //Lips inside part
+    for(unsigned long i = 61; i <= 67; i++)
+        line(image, temp1[i], temp1[i-1], color, thickness, CV_AA);
+    line(image, temp1[60], temp1[67], color, thickness, CV_AA);
+
+    imshow("Rendered Image", image);
+    waitKey(0);
+}
+
+void KazemiFaceAlignImpl::renderDetectionsperframe(Mat& image, vector<Rect>& faces, vector< vector<Point2f>>& results, Scalar color, int thickness)
+{
+    for (unsigned long k = 0; k < faces.size(); ++k)
+    {
+        //Chin
+        for(unsigned long i = 1; i <= 16; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        //Top of nose
+        for(unsigned long i = 28; i <= 30; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        //Left Eyebrow
+        for(unsigned long i = 18; i <= 21; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        //Right Eyebrow
+        for(unsigned long i = 23; i <= 26; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        //Bottom Part of nose
+        for(unsigned long i = 31; i <= 35; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        //Nose to bottom part above
+        line(image, results[k][30], results[k][35], color, thickness, CV_AA);
+        //Left Eye
+        for(unsigned long i = 37; i <= 41; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        line(image, results[k][36], results[k][41], color, thickness, CV_AA);
+        //Right Eye
+        for(unsigned long i = 43; i <= 47; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        line(image, results[k][42], results[k][47], color, thickness, CV_AA);
+        //Lips outer part
+        for(unsigned long i = 49; i <= 59; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        line(image, results[k][48], results[k][59], color, thickness, CV_AA);
+        //Lips inside part
+        for(unsigned long i = 61; i <= 67; i++)
+            line(image, results[k][i], results[k][i-1], color, thickness, CV_AA);
+        line(image, results[k][60], results[k][67], color, thickness, CV_AA);
+    }
+    imshow("Rendered Results", image);
 }
 }

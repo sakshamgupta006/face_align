@@ -50,7 +50,7 @@
 using namespace std;
 using namespace cv;
 
-#define numSamples 10000
+#define numSamples 100
 
 namespace cv
 {
@@ -59,8 +59,8 @@ namespace cv
 class relativeSample : public ParallelLoopBody, protected KazemiFaceAlignImpl
 {
 public:
-    relativeSample (vector<trainSample>& samples, vector<Point2f> pixelrel, vector<Point2f>& meanShape)
-        : _samples(samples), _pixelrel(pixelrel), _meanShape(meanShape)
+    relativeSample (vector<trainSample>& samples, vector<Point2f> pixrel, vector<Point2f>& meanShape)
+        : _samples(samples), _pixrel(pixrel), _meanShape(meanShape)
     {
     }
 
@@ -69,59 +69,59 @@ public:
         KazemiFaceAlignImpl calculations;
         for (unsigned long r = range.start; r < range.end; r++)
         {
-            vector<Point2f> temp = calculations.calcRelativePixelsParallel(_samples[r].currentShape, _pixelrel, _meanShape);
-            calculations.extractPixelValues(_samples[r], temp);
+            _samples[r].pixelCoordinates = _pixrel;
+            calculations.calcRelativePixelsParallel(_samples[r], _meanShape);
+            calculations.extractPixelValues(_samples[r]);
         }
     }
 
 private:
     vector<trainSample>& _samples;
-    vector<Point2f> _pixelrel;
+    vector<Point2f> _pixrel;
     vector<Point2f>& _meanShape;
 };
 
-vector<Point2f> KazemiFaceAlignImpl::calcRelativePixelsParallel(vector<Point2f>& sample,vector<Point2f> pixelCoordinates, vector<Point2f>& meanShape)
+bool KazemiFaceAlignImpl::calcRelativePixelsParallel(trainSample& sample, vector<Point2f>& meanShape)
 {
-    if(sample.size()!= meanShape.size())
+    if(sample.currentShape.size()!= meanShape.size())
     {
         String errmsg = "Shape Size Mismatch Detected";
-        cout<<meanShape.size()<<endl;
         CV_Error(Error::StsBadArg, errmsg);
-        return pixelCoordinates;
+        return false;
     }
-    Mat affineMatrix = estimateRigidTransform( sample, meanShape, false);
+    Mat affineMatrix = estimateRigidTransform(sample.currentShape, meanShape, false);
     if(affineMatrix.empty())
     {
         double sampleShapeRectminx, sampleShapeRectminy, sampleShapeRectmaxx, sampleShapeRectmaxy;
-        double sampleX[sample.size()] , sampleY[sample.size()];
-        int pointcount=0;
-        for (vector<Point2f>::iterator it = sample.begin(); it != sample.end(); ++it)
+        double sampleX[sample.currentShape.size()] , sampleY[sample.currentShape.size()];
+        int pointcount = 0;
+        for (vector<Point2f>::iterator it = sample.currentShape.begin(); it != sample.currentShape.end(); ++it)
         {
             sampleX[pointcount] = (*it).x;
             sampleY[pointcount] = (*it).y;
             pointcount++;
         }
-        sampleShapeRectminx = *min_element(sampleX , sampleX + sample.size());
-        sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.size());
-        sampleShapeRectminy = *min_element(sampleY , sampleY + sample.size());
-        sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.size());
+        sampleShapeRectminx = *min_element(sampleX , sampleX + sample.currentShape.size());
+        sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.currentShape.size());
+        sampleShapeRectminy = *min_element(sampleY , sampleY + sample.currentShape.size());
+        sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.currentShape.size());
         Point2f sampleRefPoints[3];
         sampleRefPoints[0] = Point2f(sampleShapeRectminx , sampleShapeRectminy );
         sampleRefPoints[1] = Point2f( sampleShapeRectmaxx, sampleShapeRectminy );
         sampleRefPoints[2] = Point2f( sampleShapeRectminx, sampleShapeRectmaxy );
         affineMatrix = getAffineTransform(sampleRefPoints, meanShapeReferencePoints);
     }
-    for(unsigned long i=0;i<pixelCoordinates.size();i++)
+    for(unsigned long i = 0; i < sample.pixelCoordinates.size(); i++)
     {
-        unsigned long in = findNearestLandmark(pixelCoordinates[i]);
-        Point2f point = pixelCoordinates[i] - meanShape[in];
+        unsigned long in = findNearestLandmark(sample.pixelCoordinates[i]);
+        Point2f point = sample.pixelCoordinates[i] - meanShape[in];
         Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 0);
         Mat resultAffineMat = affineMatrix * fiducialPointMat;
         point.x = float((resultAffineMat.at<double>(0,0)));
         point.y = float((resultAffineMat.at<double>(1,0)));
-        pixelCoordinates[i] = point + sample[in];
+        sample.pixelCoordinates[i] = point + sample.pixelCoordinates[in];
     }
-    return pixelCoordinates;
+    return true;
 }
 
 
@@ -169,25 +169,25 @@ void KazemiFaceAlignImpl::savesample(trainSample samples, int no)
     imwrite(saves, image);
 }
 
-bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample , vector<Point2f> pixelCoordinates)
+bool KazemiFaceAlignImpl::extractPixelValues(trainSample& sample)
 {
-    vector<Point2f> pixels(pixelCoordinates.size());
+    vector<Point2f> pixels(sample.pixelCoordinates.size());
     Mat unormmat = unnormalizing_tform(sample.rect[0]);
-    for(unsigned long i = 0; i < pixelCoordinates.size(); i++)
+    for(unsigned long i = 0; i < sample.pixelCoordinates.size(); i++)
     {
-        Mat fiducialPointMat = (Mat_<double>(3,1) << pixelCoordinates[i].x, pixelCoordinates[i].y, 1);
+        Mat fiducialPointMat = (Mat_<double>(3,1) << sample.pixelCoordinates[i].x, sample.pixelCoordinates[i].y, 1);
         Mat resultAffineMat = unormmat * fiducialPointMat;
         pixels[i].x = float((resultAffineMat.at<double>(0,0)));
         pixels[i].y = float((resultAffineMat.at<double>(1,0)));
     }
     Mat image = sample.img.clone();
-    sample.pixelValues.resize(pixelCoordinates.size());
+    sample.pixelValues.resize(sample.pixelCoordinates.size());
     if(image.channels() != 1)
         cvtColor(image,image,COLOR_BGR2GRAY);
-    for (unsigned int i = 0; i < pixelCoordinates.size(); i++)
+    for (unsigned int i = 0; i < sample.pixelCoordinates.size(); i++)
     {
         if(pixels[i].x >= 0 && pixels[i].x < image.cols && pixels[i].y >= 0 && pixels[i].y < image.rows)
-            sample.pixelValues[i] = image.at<uchar>(pixels[i].x, pixels[i].y);
+            sample.pixelValues[i] = image.at<uchar>(pixels[i].y, pixels[i].x);
         else
             sample.pixelValues[i] = 0;
     }
@@ -212,13 +212,12 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
     for (unsigned long i = 0; i < cascadeDepth; ++i)
     {
         t = (double)getTickCount();
-        vector<Point2f> pixrel(pixelCoordinates[i].size());
-        pixrel = pixelCoordinates[i];
-        //parallel_for_(Range(0, samples.size()), relativeSample(samples, pixrel, meanShape));
+        //parallel_for_(Range(0, samples.size()), relativeSample(samples, pixelCoordinates[i], meanShape));
         for (unsigned long j = 0; j < samples.size(); ++j)
         {
-            calcRelativePixels(samples[j].currentShape,pixrel);
-            extractPixelValues(samples[j],pixrel);
+            samples[j].pixelCoordinates = pixelCoordinates[i];
+            calcRelativePixels(samples[j]);
+            extractPixelValues(samples[j]);
         }
         vector<regressionTree> forest = gradientBoosting(samples, pixelCoordinates[i]);
         cascadeFinal.push_back(forest);
@@ -230,7 +229,10 @@ bool KazemiFaceAlignImpl::trainCascade(std::unordered_map<string, vector<Point2f
     cout<<"Total training time = "<< total_time/(getTickFrequency()*60*60) <<" hrs"<<endl;
     writeModel(fs,cascadeFinal, pixelCoordinates);
     fs.close();
-    displayresults2(samples);
+    for (int i = 0; i < samples.size(); ++i)
+    {
+        renderDetections(samples[i], Scalar(0,255,0), 3);
+    }
     return true;
 }
 
@@ -266,7 +268,6 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
         for (unsigned long j = 0; j < oversamplingAmount; ++j)
             samples.push_back(sample);
         calcSum(sample.targetShape, meanShape, meanShape);
-        //displayresultstarget(sample);
         currentCount++;
     }
     for (int i = 0; i < meanShape.size(); ++i)
@@ -275,7 +276,6 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
         meanShape[i].y /= currentCount;
     }
     calcMeanShapeBounds();
-    samples.erase(samples.begin(),samples.begin()+1);
     for (unsigned long i = 0; i < samples.size(); ++i)
     {
         samples[i].currentShape.assign(meanShape.size(), Point2f(0.,0.));
@@ -284,35 +284,25 @@ bool KazemiFaceAlignImpl::fillData(vector<trainSample>& samples,std::unordered_m
             samples[i].currentShape = meanShape;
         else
         {
-            double hits=0;
+            double hits = 0;
             int count = 0;
             for (int randomint = 0; randomint < 4; ++randomint)
             {
                     RNG number(getTickCount());
                     unsigned long randomIndex = (unsigned long)number.uniform(0, currentCount*oversamplingAmount-1);
-                    while(randomIndex == 0)
-                    {
-                        randomIndex = (unsigned long)number.uniform(0, currentCount-1);
-                    }
-                    double alpha = number.uniform(0.,1.) + 0.1;
                     for (unsigned long j = 0; j < meanShape.size(); ++j)
                     {
                         samples[i].currentShape[j].x += samples[randomIndex].targetShape[j].x;
                         samples[i].currentShape[j].y += samples[randomIndex].targetShape[j].y;
-                        hits += alpha*1;
                     }
                     count++;
             }
             for (unsigned long l = 0; l < samples[i].currentShape.size(); ++l)
             {
-                    if(hits != 0)
-                    {
-                        samples[i].currentShape[l].x /= count;
-                        samples[i].currentShape[l].y /= count;
-                    }
+                samples[i].currentShape[l].x /= count;
+                samples[i].currentShape[l].y /= count;
             }
         }
-        //displayresults()
     }
     cout<<"Total Images Loaded -> "<<(currentCount-1) <<endl;
     cout<<"Total Sample Size -> "<< samples.size() <<endl;
@@ -461,46 +451,45 @@ unsigned int KazemiFaceAlignImpl::findNearestLandmark(Point2f& pixelValue)
     return value;
 }
 
-bool KazemiFaceAlignImpl::calcRelativePixels(vector<Point2f>& sample,vector<Point2f>& pixelCoordinates)
+bool KazemiFaceAlignImpl::calcRelativePixels(trainSample& sample)
 {
-    if(sample.size()!= meanShape.size())
+    if(sample.currentShape.size()!= meanShape.size())
     {
         String errmsg = "Shape Size Mismatch Detected";
-        cout<<sample.size()<<" "<<meanShape.size()<<endl;
         CV_Error(Error::StsBadArg, errmsg);
         return false;
     }
-    Mat affineMatrix = estimateRigidTransform( sample, meanShape, false);
+    Mat affineMatrix = estimateRigidTransform(sample.currentShape, meanShape, false);
     if(affineMatrix.empty())
     {
         double sampleShapeRectminx, sampleShapeRectminy, sampleShapeRectmaxx, sampleShapeRectmaxy;
-        double sampleX[sample.size()] , sampleY[sample.size()];
-        int pointcount=0;
-        for (vector<Point2f>::iterator it = sample.begin(); it != sample.end(); ++it)
+        double sampleX[sample.currentShape.size()] , sampleY[sample.currentShape.size()];
+        int pointcount = 0;
+        for (vector<Point2f>::iterator it = sample.currentShape.begin(); it != sample.currentShape.end(); ++it)
         {
             sampleX[pointcount] = (*it).x;
             sampleY[pointcount] = (*it).y;
             pointcount++;
         }
-        sampleShapeRectminx = *min_element(sampleX , sampleX + sample.size());
-        sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.size());
-        sampleShapeRectminy = *min_element(sampleY , sampleY + sample.size());
-        sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.size());
+        sampleShapeRectminx = *min_element(sampleX , sampleX + sample.currentShape.size());
+        sampleShapeRectmaxx = *max_element(sampleX , sampleX + sample.currentShape.size());
+        sampleShapeRectminy = *min_element(sampleY , sampleY + sample.currentShape.size());
+        sampleShapeRectmaxy = *max_element(sampleY , sampleY + sample.currentShape.size());
         Point2f sampleRefPoints[3];
         sampleRefPoints[0] = Point2f(sampleShapeRectminx , sampleShapeRectminy );
         sampleRefPoints[1] = Point2f( sampleShapeRectmaxx, sampleShapeRectminy );
         sampleRefPoints[2] = Point2f( sampleShapeRectminx, sampleShapeRectmaxy );
         affineMatrix = getAffineTransform(sampleRefPoints, meanShapeReferencePoints);
     }
-    for(unsigned long i=0;i<pixelCoordinates.size();i++)
+    for(unsigned long i = 0; i < sample.pixelCoordinates.size(); i++)
     {
-        unsigned long in = findNearestLandmark(pixelCoordinates[i]);
-        Point2f point = pixelCoordinates[i] - meanShape[in];
+        unsigned long in = findNearestLandmark(sample.pixelCoordinates[i]);
+        Point2f point = sample.pixelCoordinates[i] - meanShape[in];
         Mat fiducialPointMat = (Mat_<double>(3,1) << point.x, point.y, 0);
         Mat resultAffineMat = affineMatrix * fiducialPointMat;
         point.x = float((resultAffineMat.at<double>(0,0)));
         point.y = float((resultAffineMat.at<double>(1,0)));
-        pixelCoordinates[i] = point + sample[in];
+        sample.pixelCoordinates[i] = point + sample.pixelCoordinates[in];
     }
     return true;
 }
