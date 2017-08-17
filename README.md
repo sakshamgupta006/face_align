@@ -1,5 +1,8 @@
-# GSOC 2017: Face Alignment Module for OpenCV
-The project aims to implement state of the art Face alignment Technique proposed by Vahid Kazemi
+[![OpenCV](https://img.shields.io/badge/dependency-OpenCV-green.svg)](https://github.com/opencv/opencv)
+[![Licence](https://img.shields.io/badge/license-BSD-yellow.svg)](http://opencv.org/license.html)
+[!(Language)(https://img.shields.io/badge/language-C%2B%2B-brightgreen.svg)](https://en.wikipedia.org/wiki/C%2B%2B)
+# GSoC 2017: Face Alignment Module based on OpenCV
+This project is an implementation of state of the art Face alignment Technique proposed by Vahid Kazemi.
 
 ## Project Description
 The GSOC proposal can be found on [Drive](https://drive.google.com/open?id=10LIfoV-pRIjoH-xNmLwaQOANavfMYT-5cS-4FpwTSPE).
@@ -13,19 +16,6 @@ alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 <a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/test_2.jpg" 
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
-
-# License
-By downloading, copying, installing or using the software you agree to this license. If you do not agree to this license, do not download, install, copy or use the software.
-
-License Agreement
-For Open Source Computer Vision Library
-(3-clause BSD License)
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
-Neither the names of the copyright holders nor the names of the contributors may be used to endorse or promote products derived from this software without specific prior written permission.
-This software is provided by the copyright holders and contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall copyright holders or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
 
 ## Pre-requisites
 The module has been tested on **Ubuntu 16.04** with **OpenCV 3.2** , but it should be easy to compile in other platforms.
@@ -70,6 +60,7 @@ To modify the parameters for Training run the following command
 ./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> -landmarks=<number of Landmarks> -oversampling=<Over sampling Amount> -learningrate=<Learning Rate> -cascadedepth=<> -treedepth=<> -treespercascade=<> -testcoordinates=<> -numtestsplits=<> -lambda=<> <Output Name of Trained Model>
 
 ```
+A detailed description of each parameter is given in subsequent sections
 or you can simply run
 ```
 ./Train_ex -path <path to the dataset>
@@ -108,3 +99,33 @@ A detailed timeline of the project can be found on [Google Calander](https://cal
 
 ## Blog
 Blog regarding the GSOC project journey can be found [Here](saksham-gsoc2017.blogspot.com).
+
+## Description of Training Parameters
+* **cascade:** Face Detector Model file path. For best results use Haar cascade frontalface alt2 xml model
+* **path*:* Dataset folder path
+* **landmarks:** Number of Landmarks to be trained on.
+* **oversampling:** Number of different initializations for each training image.
+* **learningrate:** This factor determines the rate of change of learned values. Used to modify the leaves of regression trees.
+* **cascadedepth:** Number of Cascade's for the Gradient boosting function
+* **treedepth:** Depth of each tree in the cascade
+* **treespercascade:** Number of trees in each cascade 
+* **testcoordinates** Number of test coordinates where splits will be tested
+* **numtestsplits** Number of good splits to consider.
+* **lambda** The priori variable to decide a good random split feature
+* **samples** Number of samples/images to train on.
+
+## Training on a custom Dataset
+
+
+## License
+By downloading, copying, installing or using the software you agree to this license. If you do not agree to this license, do not download, install, copy or use the software.
+
+License Agreement
+For Open Source Computer Vision Library
+(3-clause BSD License)
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+Neither the names of the copyright holders nor the names of the contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+This software is provided by the copyright holders and contributors “as is” and any express or implied warranties, including, but not limited to, the implied warranties of merchantability and fitness for a particular purpose are disclaimed. In no event shall copyright holders or contributors be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services; loss of use, data, or profits; or business interruption) however caused and on any theory of liability, whether in contract, strict liability, or tort (including negligence or otherwise) arising in any way out of the use of this software, even if advised of the possibility of such damage.
