@@ -1,6 +1,6 @@
 [![OpenCV](https://img.shields.io/badge/dependency-OpenCV-green.svg)](https://github.com/opencv/opencv)
 [![Licence](https://img.shields.io/badge/license-BSD-yellow.svg)](http://opencv.org/license.html)
-[!(Language)(https://img.shields.io/badge/language-C%2B%2B-brightgreen.svg)](https://en.wikipedia.org/wiki/C%2B%2B)
+[![Language](https://img.shields.io/badge/language-C%2B%2B-brightgreen.svg)](https://en.wikipedia.org/wiki/C%2B%2B)
 # GSoC 2017: Face Alignment Module based on OpenCV
 This project is an implementation of state of the art Face alignment Technique proposed by Vahid Kazemi.
 
@@ -102,7 +102,7 @@ Blog regarding the GSOC project journey can be found [Here](saksham-gsoc2017.blo
 
 ## Description of Training Parameters
 * **cascade:** Face Detector Model file path. For best results use Haar cascade frontalface alt2 xml model
-* **path*:* Dataset folder path
+* **path:** Dataset folder path
 * **landmarks:** Number of Landmarks to be trained on.
 * **oversampling:** Number of different initializations for each training image.
 * **learningrate:** This factor determines the rate of change of learned values. Used to modify the leaves of regression trees.
