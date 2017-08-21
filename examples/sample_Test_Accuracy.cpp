@@ -72,7 +72,7 @@ int main(int argc, const char** argv)
         trainSample sample;
         sample.img = imread(it->first);
         sample.targetShape = it->second;
-        accuracy.scaleData(sample.targetShape, sample.img, Size(460,460));
+        accuracy.scaleData(sample.img, sample.targetShape, Size(460,460));
         sample.rect = accuracy.faceDetector(sample.img, cascade);
         vector< vector<Point2f> > resultLandmarks;
         double error_current = 0;
@@ -94,7 +94,6 @@ int main(int argc, const char** argv)
                 error_current += accuracy.getDistance(sample.targetShape[j], sample.currentShape[j]);
             }
             error_current += error_current / (sample.currentShape.size() * accuracy.getInterocularDistance(sample.currentShape));
-            cout<<error_current<<endl;
             count++;
         }
         else

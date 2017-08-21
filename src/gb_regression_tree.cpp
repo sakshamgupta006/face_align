@@ -76,6 +76,59 @@ private:
     vector<Point2f>& _sumOutput;
 };
 
+class calcMeanResidual : public ParallelLoopBody
+{
+public:
+    calcMeanResidual (vector<trainSample>& samples, vector<Point2f>& meanresidualShape)
+        : _samples(samples), _meanresidualShape(meanresidualShape)
+    {
+    }
+
+    virtual void operator ()(const Range& range) const
+    {
+        for (unsigned long r = range.start; r < range.end; r++)
+        {
+            for (unsigned long i = 0; i < _samples[r].currentShape.size(); ++i)
+            {
+                _samples[r].residualShape[i] = _samples[r].targetShape[i] - _samples[r].currentShape[i];
+                _meanresidualShape[i] += _samples[r].residualShape[i];
+            }
+
+        }
+    }
+
+private:
+    vector<trainSample>& _samples;
+    vector<Point2f>& _meanresidualShape;
+};
+
+class calcMeanDiff : public ParallelLoopBody
+{
+public:
+    calcMeanDiff (vector<trainSample>& samples, vector<Point2f>& meanresidualShape)
+        : _samples(samples), _meanresidualShape(meanresidualShape)
+    {
+    }
+
+    virtual void operator ()(const Range& range) const
+    {
+        for (unsigned long r = range.start; r < range.end; r++)
+        {
+            for (unsigned long i = 0; i < _samples[r].currentShape.size(); ++i)
+            {
+                _samples[r].residualShape[i] -= _meanresidualShape[i];
+            }
+
+        }
+    }
+
+private:
+    vector<trainSample>& _samples;
+    vector<Point2f>& _meanresidualShape;
+};
+
+
+
 class calcDiffSample : public ParallelLoopBody
 {
 public:
@@ -153,7 +206,7 @@ splitFeature KazemiFaceAlignImpl::randomSplitFeatureGenerator(vector<Point2f>& p
         randomdoublenumber = rnd.uniform(0.,1.);
     }
     while((feature.idx1 == feature.idx2 || !(acceptProbability > randomdoublenumber)));
-    feature.thresh = (rnd.uniform(0.,1.)*255);// - 128.0) / 2.0 ;
+    feature.thresh = (rnd.uniform(0.,1.)*255 - 128.0) / 2.0 ;
     return feature;
 }
 
@@ -274,6 +327,26 @@ regressionTree KazemiFaceAlignImpl::buildRegressionTree(vector<trainSample>& sam
 
 vector<regressionTree> KazemiFaceAlignImpl::gradientBoosting(vector<trainSample>& samples, vector<Point2f>& pixelCoordinates)
 {
+    //From Dest's Implementation
+    
+    vector<Point2f> meanresidualShape;
+    meanresidualShape.resize(numLandmarks);
+    // for(unsigned long i = 0; i < samples.size(); i++)
+    // {
+    //     calcDiff(samples[i].targetShape, samples[i].currentShape, samples[i].residualShape);
+    //     calcSum(meanresidualShape, samples[i].residualShape, meanresidualShape);
+    // }
+    parallel_for_(Range(0, samples.size()), calcMeanResidual(samples, meanresidualShape));
+    for(unsigned long i = 0; i < meanresidualShape.size(); i++)
+    {
+        meanresidualShape[i].x = meanresidualShape[i].x / samples.size();
+        meanresidualShape[i].y = meanresidualShape[i].y / samples.size();
+    }
+    parallel_for_(Range(0, samples.size()), calcMeanDiff(samples, meanresidualShape));
+    // for(unsigned long i = 0; i < samples.size(); i++)
+    // {
+    //     calcDiff(samples[i].residualShape, meanresidualShape, samples[i].residualShape);
+    // }
     //for cascade of regressrs
     vector<regressionTree> forest;
     for (unsigned long i = 0; i < numTreesperCascade; ++i)

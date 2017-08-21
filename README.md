@@ -44,14 +44,15 @@ cmake ..
 make
 ```
 
-## Running Samples
+## Running Examples
 The module comes with examples demonstrating the results on **Video, Image, Multiple Images, External Capturing Devices.** Additionally, the module also includes examples to:
 * **Train** Face Alignment on new dataset and parameters.
 * **Test Accuracy** of the trained model.
+* **Landmarks Detection** from the trained model
 * **A Snapchat Filter** Like application 
 
-### Sample Training Example
-
+### Training Example
+![](https://media.giphy.com/media/xUNemUdwFSCRCWTq4U/giphy.gif)
 ```
 ./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> <Output Name of Trained Model>
 ```
@@ -66,24 +67,33 @@ or you can simply run
 ./Train_ex -path <path to the dataset>
 ```
 This will take the default values and an output file with name **68_landmarks_face_align.dat** will be generated after training.
-### Sample Face Alignment Prediction
+
+### Testing Accuraccy Example
+
+
+
+### Face Landmark Detection Example
 #### For Videos
 ```
-./Landmark_prediction -cascade <location of HAAR cascade model> -model <path to trained model> <path to video file / external capturing device id>
+./Landmark_detection_ex -cascade <location of HAAR cascade model> -model <path to trained model> <path to video file / external capturing device id>
 ```
 If no <path to video file> is defined the code will capture the web camera, if available.
 
 #### For Images
 ```
-./Landmark_prediction -cascade <location of HAAR cascade model> -model <path to trained model> <path to image / path to txt file containig images location>
+./Landmark_prediction_ex -cascade <location of HAAR cascade model> -model <path to trained model> <path to image / path to txt file containig images location>
 ```
 or you can simply run
 ```
-./Landmark_prediction <path to image / path to txt file containig images location>
+./Landmark_prediction_ex <path to image / path to txt file containig images location>
 ```
 This will take the default values of cascade and trained model.
 
-### Sample Filter Application
+### Filter Application Example
+'''
+./Filter_ex -filter=<enum value of corresponding filter> <Path to image/video input>
+'''
+
 
 ## Dataset
 The module was trained on a combination of HELEN, LFPW, iBug, and AFW datasets and their mirror images. The combined dataset can be downloaded from [Drive](https://drive.google.com/file/d/0B8t1D28N36RXTGIxd1o5QnBRT1E/view?usp=sharing).

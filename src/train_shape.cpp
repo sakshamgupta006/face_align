@@ -152,6 +152,17 @@ void KazemiFaceAlignImpl::setLambda(float Lambda)
     lambda = Lambda;
 }
 
+void KazemiFaceAlignImpl::setnumSamples(unsigned long numsamples)
+{
+    if(numSamples < 5)
+    {
+        String errmsg = "Invalid number of Samples";
+        CV_Error(Error::StsBadArg, errmsg);
+        return ;
+    }
+    numSamples = numsamples;
+}
+
 unsigned long KazemiFaceAlignImpl::leftChild(unsigned long idx)
 {
     return 2*idx + 1;
@@ -216,8 +227,6 @@ bool KazemiFaceAlignImpl::readnewdataset(vector<cv::String>& l, std::unordered_m
         }
         string v = l[j];
         landmarks[v] = temp;
-        cout<<v<<endl;
-        cout<<filenames[j]<<endl;
         temp.clear();
         f.close();
     }
@@ -228,13 +237,9 @@ bool KazemiFaceAlignImpl::readmirror(vector<cv::String>& l, std::unordered_map<s
 {
     vector<cv::String> filenames;
     vector<cv::String> files_png;
-    //string annotationPath = path_prefix + "*.png";
     string annotationPath3 = path_prefix + "*_mirror.jpg";
     string annotationPath2 = path_prefix + "*.pts";
-    glob(annotationPath3,files_png,false);
-    //glob(annotationPath2,filenames,false);
-    //glob(annotationPath,files_png,false);
-            
+    glob(annotationPath3,files_png,false);        
     vector<Point2f> temp, temp2;
     string s, tok, randomstring;
     vector<string> coordinates;
@@ -334,13 +339,14 @@ vector<Rect> KazemiFaceAlignImpl::faceDetector(Mat image,CascadeClassifier& casc
     equalizeHist(gray,gray);
     cascade.detectMultiScale(gray, faces, 1.1, 3, 0 |CASCADE_SCALE_IMAGE,Size(100, 100));
     numFaces = faces.size();
+    for(unsigned long i = 0; i < faces.size(); i++)
+    {
+        faces[i].width = faces[i].width;
+        faces[i].height = 1.2*faces[i].height;
+    }
     return faces;
 }
 
-Mat KazemiFaceAlignImpl::getImage(string imgpath, string path_prefix)
-{
-    return imread(path_prefix + imgpath + ".jpg");
-}
 
 bool KazemiFaceAlignImpl::calcDiff(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)
 {
@@ -360,17 +366,6 @@ bool KazemiFaceAlignImpl::calcSum(vector<Point2f>& input1, vector<Point2f>& inpu
         output[i] = input1[i] + input2[i];
     }
     return true;
-}
-
-bool KazemiFaceAlignImpl::calcMul(vector<Point2f>& input1, vector<Point2f>& input2, vector<Point2f>& output)
-{
-    output.resize(input1.size());
-    for (unsigned long i = 0; i < input1.size(); ++i)
-    {
-        output[i].x = input1[i].x * input2[i].x;
-        output[i].y = input1[i].y * input2[i].y;
-    }
-    return true;;
 }
 
 bool KazemiFaceAlignImpl::calcMeanShapeBounds()
