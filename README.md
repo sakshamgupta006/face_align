@@ -68,9 +68,10 @@ or you can simply run
 ```
 This will take the default values and an output file with name **68_landmarks_face_align.dat** will be generated after training.
 
-### Testing Accuraccy Example
-
-
+### Testing Accuracy Example
+```
+./Test_accuracy_ex 
+```
 
 ### Face Landmark Detection Example
 #### For Videos
@@ -88,11 +89,12 @@ or you can simply run
 ./Landmark_prediction_ex <path to image / path to txt file containig images location>
 ```
 This will take the default values of cascade and trained model.
+For better results you can download and use the heavier model from [Here](https://drive.google.com/open?id=0B3qCZz_EciMmcU9OcEhiWmZSQms)
 
 ### Filter Application Example
-'''
+```
 ./Filter_ex -filter=<enum value of corresponding filter> <Path to image/video input>
-'''
+```
 
 
 ## Dataset
