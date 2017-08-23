@@ -50,62 +50,85 @@
 using namespace std;
 using namespace cv;
 
+static void help()
+{
+    cout << "\nThis program demonstrates the training of Face Alignment Technique by Vahid Kazemi.\nThis approach works with LBP, HOG and HAAR based face detectors.\n"
+            "This module can work on any number of landmarks on face. With some modififcation it can be used for Landmark detection of any shape\n"
+            "Usage:\n"
+            "./Train_ex [-cascade=<face detector model>(optional)this is the cascade mlodule used for face detection]\n"
+               "   [-path=<path to dataset> specifies the path to dataset on which the model will be trained]]\n"
+               "   [-landmarks=<Number of Landmarks in the Dataset>(optional)The iBug 300w has 68 landmarks by default]\n"
+               "   [-oversampling=<Number of different Initializations of each Image>(optional)(20 default)]\n"
+               "   [-learningrate=<Learning Rate during Regression>(optional)(0.1 by default)]\n"
+               "   [-cascadedepth=<Number of Cascade's>(optional)(10 by default)]\n"
+               "   [-treedepth=<Depth of each Regression Tree>(optional)(5 by default)]\n"
+               "   [-treespercascade=<Number of Tree's in each cascade>(optional)(500 by default)]\n"
+               "   [-testcoordinates=<Number of test coordinates>(optional)(500 by default)]\n"
+               "   [-lambda=<Priori for Randonm Feature Selection>(optional)(0.1 by default)]\n"
+               "   [-samples=<Number of images to be trained on from dataset>(optional)(300 by default)]"
+               "   [@filename(Output Model Filename)(\"68_landmarks_face_align.dat\" by default)]\n\n"
+            "for one call:\n"
+            "./Train_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -path=\"../data/dataset/\" -landmarks=68 -oversampling=20 -learningrate=0.1 -cascadedepth=10 -treedepth=5 -treespercascade=500 -testcoordinates=500 -lambda=0.1 -samples=300 68_landmarks_face_align.dat\n"
+            "Using OpenCV version " << CV_VERSION << "\n" << endl;
+
+}
+
 Rect calctightbound(Mat image)
 {
-	cvtColor(image,image,CV_BGR2GRAY);
-	int x1=0,x2=0,y1=0,y2=0;
-	for (int i = 0; i < image.cols; ++i)
-	{
-		for (int j = 0; j < image.rows; ++j)
-		{
-			if(image.at<uchar>(j,i) > 0 )
-			{
-				y1 = i;
-				break;
-			}
-		}
-	}
-	for (int i = image.cols-1; i >= 0 ; i--)
-	{
-		for (int j = 0; j < image.rows; ++j)
-		{
-			if(image.at<uchar>(j,i) > 0)
-			{
-				y2 = i;
-				break;
-			}
-		}
-	}
-	for (int i = 0; i < image.rows; ++i)
-	{
-		for (int j = 0; j < image.cols; ++j)
-		{
-			if(image.at<uchar>(i,j) > 0)
-			{
-				x1 = i;
-				break;
-			}
-		}
-	}
-	for (int i = image.rows-1; i >= 0; i--)
-	{
-		for (int j = 0; j < image.cols; ++j)
-		{
-			if(image.at<uchar>(i,j) > 0)
-			{
-				x2 = i;
-				break;
-			}
-		}
-	}
-	// cout<<x1<<" "<<x2<<endl;
-	// cout<<y1<<" "<<y2<<endl;
-	// circle(image, Point(x1,y1),5, Scalar(0,0,255), -1);
-	// circle(image, Point(x1,y2),5, Scalar(0,0,255), -1);
-	// circle(image, Point(x2,y1),5, Scalar(0,0,255), -1);
-	// circle(image, Point(x2,y2),5, Scalar(0,0,255), -1);
-	// imshow("show", image);
-	
+    cvtColor(image,image,CV_BGR2GRAY);
+    int x1=0,x2=0,y1=0,y2=0;
+    for (int i = 0; i < image.cols; ++i)
+    {
+        for (int j = 0; j < image.rows; ++j)
+        {
+            if(image.at<uchar>(j,i) > 0 )
+            {
+                y1 = i;
+                break;
+            }
+        }
+    }
+    for (int i = image.cols-1; i >= 0 ; i--)
+    {
+        for (int j = 0; j < image.rows; ++j)
+        {
+            if(image.at<uchar>(j,i) > 0)
+            {
+                y2 = i;
+                break;
+            }
+        }
+    }
+    for (int i = 0; i < image.rows; ++i)
+    {
+        for (int j = 0; j < image.cols; ++j)
+        {
+            if(image.at<uchar>(i,j) > 0)
+            {
+                x1 = i;
+                break;
+            }
+        }
+    }
+    for (int i = image.rows-1; i >= 0; i--)
+    {
+        for (int j = 0; j < image.cols; ++j)
+        {
+            if(image.at<uchar>(i,j) > 0)
+            {
+                x2 = i;
+                break;
+            }
+        }
+    }
+    // cout<<x1<<" "<<x2<<endl;
+    // cout<<y1<<" "<<y2<<endl;
+    // circle(image, Point(x1,y1),5, Scalar(0,0,255), -1);
+    // circle(image, Point(x1,y2),5, Scalar(0,0,255), -1);
+    // circle(image, Point(x2,y1),5, Scalar(0,0,255), -1);
+    // circle(image, Point(x2,y2),5, Scalar(0,0,255), -1);
+    // imshow("show", image);
+    
 Rect r;
 r.y = min(x1,x2);
 r.x = min(y1,y2);
@@ -114,11 +137,6 @@ r.height = abs(x2 - x1);
 return r;
 }
 
-
-static void help()
-{
-    cout << "To be written near code completion"<<endl;
-}
 
 void overlayImage(const cv::Mat &background, const cv::Mat &foreground, 
   cv::Mat &output, cv::Point2i location)

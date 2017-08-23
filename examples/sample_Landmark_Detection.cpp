@@ -52,7 +52,17 @@ using namespace cv;
 
 static void help()
 {
-    cout << "To be written near code completion"<<endl;
+    cout << "\nThis program demonstrates the Detection of Facial Landmarks by Vahid Kazemi.\n"
+            "The module is capable of running on single/multiple images as well as on video and live input.\n"
+            "This approach works with LBP, HOG and HAAR based face detectors.\n"
+            "Please use the same face detector as used while training for most accurate results.\n"
+            "Usage:\n"
+            "./Landmark_detection_ex [-cascade=<face detector model>(optional)this is the cascade module used for face detection(deafult: Haar frontal face detector 2)]\n"
+               "   [-model=<path to trained model> specifies the path to model trained using training module]\n"
+               "   [@filename(For image: provide path to image, For multiple images: Provide a txt file with path to images, For video input: Provide path to video, For live input: Leave blank)]\n\n"
+            "for one call:\n"
+            "./landmark_detection_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -model=\"../data/68_landmarks_face_align.dat\" image1.png\n"
+            "Using OpenCV version " << CV_VERSION << "\n" << endl;
 }
 
 int main(int argc, const char** argv)

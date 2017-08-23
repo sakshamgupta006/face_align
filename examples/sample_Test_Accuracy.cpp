@@ -9,24 +9,32 @@
 using namespace std;
 using namespace cv;
 
-#define numSamples 100
-
 static void help()
 {
-    cout << "To be written near code completion"<<endl;
+    cout << "\nThis program demonstrates the checking accuracy of the trained module on any dataset.\nThis approach works with LBP, HOG and HAAR based face detectors.\n"
+            "This module can work on any number of landmarks on face. With some modififcation it can be used for Landmark detection of any shape\n"
+            "Please use the same face detector as used while training for most accurate results.\n"
+            "Usage:\n"
+            "./Test_accuracy_ex [-cascade=<face detector model>(optional)this is the cascade module used for face detection(deafult: Haar frontal face detector 2)]\n"
+            "[-path=<path to dataset> specifies the path to dataset on which the model will be tested]]\n"
+            "[-model=<path to trained model>(default is the 68 landmarks model in data )]\n"
+            "[-samples=<Number of test samples from the database>(Deafult: 300)]\n"
+            "for one call:\n"
+            "./Test_accuracy_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -path=\"../data/dataset/\" -model=\"../data/68_landmarks_face_align.dat\" -samples=500\n"
+            "Using OpenCV version " << CV_VERSION << "\n" << endl;
 }
 
 int main(int argc, const char** argv)
 {
-    string cascadeName, inputName;
+    string cascadeName;
     CascadeClassifier cascade;
     string poseTree;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
             "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"
             "{path | ../data/300wcropped/ | }"
-            "{poseTree| ../data/68_landmarks_face_align.dat |}"
-            "{@filename||}"
+            "{model| ../data/68_landmarks_face_align.dat |}"
+            "{samples | 300 |}"
         );
     if(parser.has("help"))
     {
@@ -41,8 +49,8 @@ int main(int argc, const char** argv)
         return -1;
     }
     string path_prefix = parser.get<string>("path");
-    poseTree = parser.get<string>("poseTree");
-    inputName = parser.get<string>("@filename");
+    poseTree = parser.get<string>("model");
+    unsigned long numSamples = parser.get<unsigned long>("samples");
     if (!parser.check())
     {
         parser.printErrors();

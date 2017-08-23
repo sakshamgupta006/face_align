@@ -11,19 +11,24 @@ using namespace cv;
 
 static void help()
 {
-    cout << "\nThis program demonstrates the cascade recognizer. Now you can use Haar or LBP features.\n"
-            "This classifier can recognize many kinds of rigid objects, once the appropriate classifier is trained.\n"
-            "It's most known use is for faces.\n"
+    cout << "\nThis program demonstrates the training of Face Alignment Technique by Vahid Kazemi.\nThis approach works with LBP, HOG and HAAR based face detectors.\n"
+            "This module can work on any number of landmarks on face. With some modififcation it can be used for Landmark detection of any shape\n"
             "Usage:\n"
-            "./facedetect [--cascade=<cascade_path> this is the primary trained classifier such as frontal face]\n"
-               "   [--nested-cascade[=nested_cascade_path this an optional secondary classifier such as eyes]]\n"
-               "   [--scale=<image scale greater or equal to 1, try 1.3 for example>]\n"
-               "   [--try-flip]\n"
-               "   [filename|camera_index]\n\n"
-            "see facedetect.cmd for one call:\n"
-            "./facedetect --cascade=\"../../data/haarcascades/haarcascade_frontalface_alt.xml\" --nested-cascade=\"../../data/haarcascades/haarcascade_eye_tree_eyeglasses.xml\" --scale=1.3\n\n"
-            "During execution:\n\tHit any key to quit.\n"
-            "\tUsing OpenCV version " << CV_VERSION << "\n" << endl;
+            "./Train_ex [-cascade=<face detector model>(optional)this is the cascade module used for face detection]\n"
+               "   [-path=<path to dataset> specifies the path to dataset on which the model will be trained]]\n"
+               "   [-landmarks=<Number of Landmarks in the Dataset>(optional)The iBug 300w has 68 landmarks by default]\n"
+               "   [-oversampling=<Number of different Initializations of each Image>(optional)(20 default)]\n"
+               "   [-learningrate=<Learning Rate during Regression>(optional)(0.1 by default)]\n"
+               "   [-cascadedepth=<Number of Cascade's>(optional)(10 by default)]\n"
+               "   [-treedepth=<Depth of each Regression Tree>(optional)(5 by default)]\n"
+               "   [-treespercascade=<Number of Tree's in each cascade>(optional)(500 by default)]\n"
+               "   [-testcoordinates=<Number of test coordinates>(optional)(500 by default)]\n"
+               "   [-lambda=<Priori for Randonm Feature Selection>(optional)(0.1 by default)]\n"
+               "   [-samples=<Number of images to be trained on from dataset>(optional)(300 by default)]"
+               "   [@filename(Output Model Filename)(\"68_landmarks_face_align.dat\" by default)]\n\n"
+            "for one call:\n"
+            "./Train_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -path=\"../data/dataset/\" -landmarks=68 -oversampling=20 -learningrate=0.1 -cascadedepth=10 -treedepth=5 -treespercascade=500 -testcoordinates=500 -lambda=0.1 -samples=300 68_landmarks_face_align.dat\n"
+            "Using OpenCV version " << CV_VERSION << "\n" << endl;
 }
 
 int main(int argc, const char** argv )

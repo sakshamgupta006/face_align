@@ -5,7 +5,7 @@
 This project is an implementation of state of the art Face alignment Technique proposed by Vahid Kazemi.
 
 ## Project Description
-The GSOC proposal can be found on [Drive](https://drive.google.com/open?id=10LIfoV-pRIjoH-xNmLwaQOANavfMYT-5cS-4FpwTSPE).
+The GSoC proposal can be found on [Drive](https://drive.google.com/open?id=10LIfoV-pRIjoH-xNmLwaQOANavfMYT-5cS-4FpwTSPE).
 We aim to implement the paper [One Millisecond Face Alignment with an Ensemble of Regression Trees](https://pdfs.semanticscholar.org/d78b/6a5b0dcaa81b1faea5fb0000045a62513567.pdf) using OpenCV.
 
 <a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/result_3.png" 
@@ -54,39 +54,39 @@ The module comes with examples demonstrating the results on **Video, Image, Mult
 ### Training Example
 ![](https://media.giphy.com/media/xUNemUdwFSCRCWTq4U/giphy.gif)
 ```
-./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> <Output Name of Trained Model>
+./Train_ex -cascade=<location of HAAR cascade model> -path=<path to the dataset> <Output Name of Trained Model>
 ```
 To modify the parameters for Training run the following command
 ```
-./Train_ex -cascade <location of HAAR cascade model> -path <path to the dataset> -landmarks=<number of Landmarks> -oversampling=<Over sampling Amount> -learningrate=<Learning Rate> -cascadedepth=<> -treedepth=<> -treespercascade=<> -testcoordinates=<> -numtestsplits=<> -lambda=<> <Output Name of Trained Model>
+./Train_ex -cascade=<location of HAAR cascade model> -path=<path to the dataset> -landmarks=<number of Landmarks> -oversampling=<Over sampling Amount> -learningrate=<Learning Rate> -cascadedepth=<> -treedepth=<> -treespercascade=<> -testcoordinates=<> -numtestsplits=<> -lambda=<> -samples<Number of images from dataset> <Output Name of Trained Model>
 
 ```
 A detailed description of each parameter is given in subsequent sections
 or you can simply run
 ```
-./Train_ex -path <path to the dataset>
+./Train_ex -path=<path to the dataset>
 ```
 This will take the default values and an output file with name **68_landmarks_face_align.dat** will be generated after training.
 
 ### Testing Accuracy Example
 ```
-./Test_accuracy_ex 
+./Test_accuracy_ex -cascade=../data/haarcascade_frontalface_alt2.xml -path=../data/dataset/ -model=../data/68_landmarks_face_align.dat -samples=500
 ```
 
 ### Face Landmark Detection Example
 #### For Videos
 ```
-./Landmark_detection_ex -cascade <location of HAAR cascade model> -model <path to trained model> <path to video file / external capturing device id>
+./Landmark_detection_ex -cascade=<location of HAAR cascade model> -model=<path to trained model> <path to video file / external capturing device id>
 ```
 If no <path to video file> is defined the code will capture the web camera, if available.
 
 #### For Images
 ```
-./Landmark_prediction_ex -cascade <location of HAAR cascade model> -model <path to trained model> <path to image / path to txt file containig images location>
+./Landmark_detection_ex -cascade=<location of HAAR cascade model> -model=<path to trained model> <path to image / path to txt file containig images location>
 ```
 or you can simply run
 ```
-./Landmark_prediction_ex <path to image / path to txt file containig images location>
+./Landmark_detection_ex <path to image / path to txt file containig images location>
 ```
 This will take the default values of cascade and trained model.
 For better results you can download and use the heavier model from [Here](https://drive.google.com/open?id=0B3qCZz_EciMmcU9OcEhiWmZSQms)
@@ -95,8 +95,6 @@ For better results you can download and use the heavier model from [Here](https:
 ```
 ./Filter_ex -filter=<enum value of corresponding filter> <Path to image/video input>
 ```
-
-
 ## Dataset
 The module was trained on a combination of HELEN, LFPW, iBug, and AFW datasets and their mirror images. The combined dataset can be downloaded from [Drive](https://drive.google.com/file/d/0B8t1D28N36RXTGIxd1o5QnBRT1E/view?usp=sharing).
 
