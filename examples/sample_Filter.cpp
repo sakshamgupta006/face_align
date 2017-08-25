@@ -52,23 +52,16 @@ using namespace cv;
 
 static void help()
 {
-    cout << "\nThis program demonstrates the training of Face Alignment Technique by Vahid Kazemi.\nThis approach works with LBP, HOG and HAAR based face detectors.\n"
-            "This module can work on any number of landmarks on face. With some modififcation it can be used for Landmark detection of any shape\n"
+    cout << "\nThis program demonstrates Snapchat Filter like Application using Alignment Technique by Vahid Kazemi.\nThis application supports three filter as of now.\n"
+            "The application can be customized to support any face filtes.\n"
+            "Any new filter must be first mannually fitted over clooney.jpg in data folder for best results.\n"
             "Usage:\n"
-            "./Train_ex [-cascade=<face detector model>(optional)this is the cascade mlodule used for face detection]\n"
-               "   [-path=<path to dataset> specifies the path to dataset on which the model will be trained]]\n"
-               "   [-landmarks=<Number of Landmarks in the Dataset>(optional)The iBug 300w has 68 landmarks by default]\n"
-               "   [-oversampling=<Number of different Initializations of each Image>(optional)(20 default)]\n"
-               "   [-learningrate=<Learning Rate during Regression>(optional)(0.1 by default)]\n"
-               "   [-cascadedepth=<Number of Cascade's>(optional)(10 by default)]\n"
-               "   [-treedepth=<Depth of each Regression Tree>(optional)(5 by default)]\n"
-               "   [-treespercascade=<Number of Tree's in each cascade>(optional)(500 by default)]\n"
-               "   [-testcoordinates=<Number of test coordinates>(optional)(500 by default)]\n"
-               "   [-lambda=<Priori for Randonm Feature Selection>(optional)(0.1 by default)]\n"
-               "   [-samples=<Number of images to be trained on from dataset>(optional)(300 by default)]"
-               "   [@filename(Output Model Filename)(\"68_landmarks_face_align.dat\" by default)]\n\n"
+            "./Filter_ex [-cascade=<face detector model>(optional)this is the cascade mlodule used for face detection]\n"
+               "   [-model=<path to trained model> specifies the path to trained model]]\n"
+               "   [-filter=<Give different numbers for different Filters>(1: Glasses , 2: Batman , 3: Chetah)\n"
+               "   [@filename(For image: provide path to image, For multiple images: Provide a txt file with path to images, For video input: Provide path to video, For live input: Leave blank)]\n\n"
             "for one call:\n"
-            "./Train_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -path=\"../data/dataset/\" -landmarks=68 -oversampling=20 -learningrate=0.1 -cascadedepth=10 -treedepth=5 -treespercascade=500 -testcoordinates=500 -lambda=0.1 -samples=300 68_landmarks_face_align.dat\n"
+            "./Filter_ex -cascade=\"../data/haarcascade_frontalface_alt2.xml\" -model=\"../data/68_landmarks_face_align.dat/\" -filter=1 image1.png\n"
             "Using OpenCV version " << CV_VERSION << "\n" << endl;
 
 }
@@ -120,15 +113,7 @@ Rect calctightbound(Mat image)
                 break;
             }
         }
-    }
-    // cout<<x1<<" "<<x2<<endl;
-    // cout<<y1<<" "<<y2<<endl;
-    // circle(image, Point(x1,y1),5, Scalar(0,0,255), -1);
-    // circle(image, Point(x1,y2),5, Scalar(0,0,255), -1);
-    // circle(image, Point(x2,y1),5, Scalar(0,0,255), -1);
-    // circle(image, Point(x2,y2),5, Scalar(0,0,255), -1);
-    // imshow("show", image);
-    
+    } 
 Rect r;
 r.y = min(x1,x2);
 r.x = min(y1,y2);
@@ -137,43 +122,21 @@ r.height = abs(x2 - x1);
 return r;
 }
 
-
-void overlayImage(const cv::Mat &background, const cv::Mat &foreground, 
-  cv::Mat &output, cv::Point2i location)
+//This approach is used to overlay a png image over another image removing the background of overlayed image
+void overlayImage(const cv::Mat &background, const cv::Mat &foreground, cv::Mat &output, cv::Point2i location)
 {
   background.copyTo(output);
-
-
-  // start at the row indicated by location, or at row 0 if location.y is negative.
   for(int y = std::max(location.y , 0); y < background.rows; ++y)
   {
-    int fY = y - location.y; // because of the translation
-
-    // we are done of we have processed all rows of the foreground image.
+    int fY = y - location.y;
     if(fY >= foreground.rows)
       break;
-
-    // start at the column indicated by location, 
-
-    // or at column 0 if location.x is negative.
     for(int x = std::max(location.x, 0); x < background.cols; ++x)
     {
-      int fX = x - location.x; // because of the translation.
-
-      // we are done with this row if the column is outside of the foreground image.
+      int fX = x - location.x;
       if(fX >= foreground.cols)
         break;
-
-      // determine the opacity of the foregrond pixel, using its fourth (alpha) channel.
-      double opacity =
-        ((double)foreground.data[fY * foreground.step + fX * foreground.channels() + 3])
-
-        / 255.;
-
-
-      // and now combine the background and foreground pixel, using the opacity, 
-
-      // but only if opacity > 0.
+      double opacity =((double)foreground.data[fY * foreground.step + fX * foreground.channels() + 3])/ 255.;
       for(int c = 0; opacity > 0 && c < output.channels(); ++c)
       {
         unsigned char foregroundPx =
@@ -196,9 +159,10 @@ int main(int argc, const char** argv)
     Mat image, frame;
     cv::CommandLineParser parser(argc ,argv,
             "{help h||}"
-            "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"  //Only HAAR based detectors
-            "{model| ../data/68_landmarks_face_align.dat |}"        //will work as the model is
-            "{@filename||}"                                         //trained using HAAR.
+            "{cascade | ../data/haarcascade_frontalface_alt2.xml|}"  
+            "{model| ../data/68_landmarks_face_align.dat |}"        
+            "{filter | 1 |}"
+            "{@filename||}"
         );
     if(parser.has("help"))
     {
@@ -213,7 +177,7 @@ int main(int argc, const char** argv)
         return -1;
     }
     poseTree = parser.get<string>("model");
-    KazemiFaceAlignImpl predict;
+    KazemiFaceAlignImpl filter;
     ifstream fs(poseTree, ios::binary);
     if(!fs.is_open())
     {
@@ -223,9 +187,10 @@ int main(int argc, const char** argv)
     }
     vector< vector<regressionTree> > forests;
     vector< vector<Point2f> > pixelCoordinates;
-    predict.loadTrainedModel(fs, forests, pixelCoordinates);
-    predict.calcMeanShapeBounds();
+    filter.loadTrainedModel(fs, forests, pixelCoordinates);
+    filter.calcMeanShapeBounds();
     vector< vector<Point2f>> result;
+    unsigned long filterval = parser.get<unsigned long>("filter");
     inputName = parser.get<string>("@filename");
     if (!parser.check())
     {
@@ -252,27 +217,33 @@ int main(int argc, const char** argv)
         image = imread( "../data/lena.jpg", 1 );
         if(image.empty()) cout << "Couldn't read ../data/lena.jpg" << endl;
     }
+
+    Mat spec;
+    if(filterval == 1)
+        spec = imread("../data/Glasses.png",-1);
+    else if(filterval == 2)
+        spec = imread("../data/batman.png", -1);
+    else if(filterval == 3)
+        spec = imread("../data/leopard.png", -1);
+    Rect tight;
+    Mat img2 = imread("../data/clonney.png");
+    vector<Rect> faces2 = filter.faceDetector(img2, cascade);
+    vector<vector<Point2f>> res2;
+    res2 = filter.getFacialLandmarks(img2, faces2, forests, pixelCoordinates);
     if( capture.isOpened() )
     {
         cout << "Video capturing has been started ..." << endl;
-        Mat spec = imread("../data/Glasses.png",-1);
-        Rect tight;
-        Mat img2 = imread("../data/clooney.jpg");
-        resize(img2, img2, Size(460,460));
-        vector<Rect> faces2 = predict.faceDetector(img2, cascade);
-        vector<vector<Point2f>> res2;
-        res2 = predict.getFacialLandmarks(img2, faces2, forests, pixelCoordinates);
         for(;;)
         {
             capture >> frame;
             if( frame.empty() )
                 break;
             resize(frame, frame, Size(460,460));
-            vector<Rect> faces  = predict.faceDetector(frame, cascade);
+            vector<Rect> faces  = filter.faceDetector(frame, cascade);
             if(faces.size() == 0)
             	continue;
-            result = predict.getFacialLandmarks(frame, faces, forests, pixelCoordinates);
-            //predict.renderDetectionsperframe(frame, faces, result, Scalar(0,255,0), 2);
+            result = filter.getFacialLandmarks(frame, faces, forests, pixelCoordinates);
+            //filter.renderDetectionsperframe(frame, faces, result, Scalar(0,255,0), 2);
             Point2f source[3], dst[3];
             source[0] = res2[0][0]; source[1] = res2[0][16]; source[2] = res2[0][8];
             dst[0] = result[0][0]; dst[1] = result[0][16]; dst[2] = result[0][8];
@@ -281,7 +252,18 @@ int main(int argc, const char** argv)
            	warpAffine(spec_copy, spec_copy, warp_mat, spec_copy.size());
             tight = calctightbound(spec);			
             Mat spec_cropped = spec(tight);
-            overlayImage(frame, spec_cropped, frame, result[0][0]);
+            switch(filterval)
+            {
+                case 1:
+                    overlayImage(frame, spec_cropped, frame, result[0][17]);
+                    break;
+                case 2:
+                    overlayImage(frame, spec_cropped, frame, result[0][17]);
+                    break;
+                case 3:
+                    overlayImage(frame, spec_cropped, frame, result[0][17]);
+                    break;    
+            }
            	imshow("Filter", frame);
             char c = (char)waitKey(10);
             if( c == 27 || c == 'q' || c == 'Q' )
@@ -290,33 +272,39 @@ int main(int argc, const char** argv)
     }
     else
     {
-        cout << "Detecting landmarks in " << inputName << endl;
         if( !image.empty() )
         {
             resize(image, image, Size(460,460));
-            vector<Rect> faces = predict.faceDetector(image, cascade);
-            result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
-            predict.renderDetectionsperframe(image, faces, result, Scalar(0, 255, 0), 2);
-            waitKey(0);
-            Mat img2 = imread("../data/clooney.jpg");
-            resize(img2, img2, Size(460,460));
-            vector<Rect> faces2 = predict.faceDetector(img2, cascade);
-            vector<vector<Point2f>> res2;
-            res2 = predict.getFacialLandmarks(img2, faces2, forests, pixelCoordinates);
-            predict.renderDetectionsperframe(img2, faces2, res2, Scalar(0, 255, 0), 2);
-            waitKey(0);
+            vector<Rect> faces = filter.faceDetector(image, cascade);
+            if(faces.empty())
+            {
+                cerr << "Aw..cannot find any faces in the image.." << endl;
+                return -1;
+            }
+            result = filter.getFacialLandmarks(image, faces, forests, pixelCoordinates);
+            filter.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 2);
             Point2f source[3], dst[3];
             source[0] = res2[0][0]; source[1] = res2[0][16]; source[2] = res2[0][8];
             dst[0] = result[0][0]; dst[1] = result[0][16]; dst[2] = result[0][8];
             Mat warp_mat = getAffineTransform(source, dst);
-            Mat spec = imread("../data/Glasses.png",-1);
-           	warpAffine(spec, spec, warp_mat, spec.size());
+            warpAffine(spec, spec, warp_mat, spec.size());
             Rect tight;
             tight = calctightbound(spec);			
-            cout<<tight<<endl;
             Mat spec_cropped = spec(tight);
-            overlayImage(image, spec_cropped, image, result[0][17]);
-           	imshow("Filter", image);
+            switch(filterval)
+            {
+                case 1:
+                    overlayImage(image, spec_cropped, image, result[0][17]);
+                    break;
+                case 2:
+                    overlayImage(image, spec_cropped, image, result[0][17]);
+                    break;
+                case 3:
+                    
+                    overlayImage(image, spec_cropped, image, result[0][17]);
+                    break;    
+            }
+            imshow("Filter", image);
            	waitKey(0);           	
         }
         else if( !inputName.empty() )
@@ -338,9 +326,9 @@ int main(int argc, const char** argv)
                     if( !image.empty() )
                     {
                         resize(image, image, Size(460,460));
-                        vector<Rect> faces = predict.faceDetector(image, cascade);
-                        result = predict.getFacialLandmarks(image, faces, forests, pixelCoordinates);
-                        predict.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 2);
+                        vector<Rect> faces = filter.faceDetector(image, cascade);
+                        result = filter.getFacialLandmarks(image, faces, forests, pixelCoordinates);
+                        filter.renderDetectionsperframe(image, faces, result, Scalar(0,255,0), 2);
                         char c = (char)waitKey(0);
                         if( c == 27 || c == 'q' || c == 'Q' )
                             break;

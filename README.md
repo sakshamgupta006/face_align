@@ -12,9 +12,7 @@ We aim to implement the paper [One Millisecond Face Alignment with an Ensemble o
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 <a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/result_4.png" 
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
-<a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/test_1.jpg" 
-alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
-<a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/test_2.jpg" 
+<a href="https://www.youtube.com/watch?v=IOlAuQkZ4fM" target="_blank"><img src="https://github.com/sakshamgupta006/face_align/blob/master/Results/Filter_Results.png" 
 alt="FACE_ALIGNMENT" width="360" height="360" border="10" /></a>
 
 ## Pre-requisites
