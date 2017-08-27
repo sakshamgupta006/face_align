@@ -93,6 +93,7 @@ For better results you can download and use the heavier model from [Here](https:
 ```
 ./Filter_ex -filter=<enum value of corresponding filter> <Path to image/video input>
 ```
+The video filter application is still in beta phase. The code works fine for images for now.
 ## Dataset
 The module was trained on a combination of HELEN, LFPW, iBug, and AFW datasets and their mirror images. The combined dataset can be downloaded from [Drive](https://drive.google.com/file/d/0B8t1D28N36RXTGIxd1o5QnBRT1E/view?usp=sharing).
 
